@@ -70,7 +70,7 @@ import PixelDog from '../../Images/PixelArts/Pixeldog_1.jpg'
 import PixelPig from '../../Images/PixelArts/pixelpig.png'
 import PixelHorse from '../../Images/PixelArts/pixelhorse.png'
 import PixelCow from '../../Images/PixelArts/Pixelcow1.png'
-import PixelTool from '../../Images/PixelArts/Pixeltool.jpg'
+import PixelTool from '../../Images/PixelArts/pixeltool.png'
 import PixelHouse from '../../Images/PixelArts/pixelhouse.png'
 
 export const Route = createFileRoute('/')({
