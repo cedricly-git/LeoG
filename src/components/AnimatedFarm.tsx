@@ -5,7 +5,7 @@
 
 import { useEffect, useRef, useCallback } from 'react'
 import { PIXEL_SPRITES } from './PixelAnimal'
-import { getPixelArtDrawable, preloadPixelArt, shouldUseImportedPixelArt } from '../lib/pixelArt'
+import { getContainedRect, getPixelArtDrawable, preloadPixelArt, shouldUseImportedPixelArt } from '../lib/pixelArt'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -332,16 +332,20 @@ export function AnimatedFarm({ selected, animalNames, animalCats, imageMap, pixe
         const isReady = img instanceof HTMLCanvasElement
           || (img instanceof HTMLImageElement && img.complete && img.naturalWidth > 0)
         if (img && isReady) {
+          const naturalWidth = img instanceof HTMLCanvasElement ? img.width : img.naturalWidth
+          const naturalHeight = img instanceof HTMLCanvasElement ? img.height : img.naturalHeight
+          const scaleMultiplier = c.category === 'Collective' ? 1.12 : 1
+          const target = getContainedRect(naturalWidth, naturalHeight, dx, dy, sz, scaleMultiplier)
           ctx.save()
           ctx.imageSmoothingEnabled = false
           ctx.beginPath(); ctx.rect(dx, dy, sz, sz); ctx.clip()
           if (c.flip) {
-            ctx.translate(dx + sz / 2, dy)
+            ctx.translate(dx + sz / 2, 0)
             ctx.scale(-1, 1)
-            ctx.translate(-sz / 2, 0)
-            ctx.drawImage(img, 0, 0, sz, sz)
+            ctx.translate(-(dx + sz / 2), 0)
+            ctx.drawImage(img, dx + sz - (target.x - dx) - target.width, target.y, target.width, target.height)
           } else {
-            ctx.drawImage(img, dx, dy, sz, sz)
+            ctx.drawImage(img, target.x, target.y, target.width, target.height)
           }
           ctx.restore()
           return

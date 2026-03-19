@@ -71,6 +71,7 @@ import PixelPig from '../../Images/PixelArts/Pixelpig.png'
 import PixelHorse from '../../Images/PixelArts/Pixelhorse.jpg'
 import PixelCow from '../../Images/PixelArts/Pixelcow1.png'
 import PixelTool from '../../Images/PixelArts/Pixeltool.jpg'
+import PixelHouse from '../../Images/PixelArts/Pixelhouse.png'
 
 export const Route = createFileRoute('/')({
   component: LandingV2,
@@ -135,6 +136,7 @@ const PIXEL_IMAGE_MAP: Record<string, string> = {
   'Horse': PixelHorse,
   'Bovine': PixelCow,
   'Tool': PixelTool,
+  'Collective': PixelHouse,
 }
 
 // ?? Per-animal-category display metadata ????????????????????????????????????
@@ -1474,9 +1476,10 @@ export default function LandingV2() {
                                 style={{
                                   width: '16px',
                                   height: '16px',
-                                  objectFit: 'cover',
+                                  objectFit: 'contain',
                                   imageRendering: 'pixelated',
                                   borderRadius: '2px',
+                                  display: 'block',
                                 }}
                               />
                             : a.image

@@ -4,6 +4,7 @@ export const IMPORTED_PIXEL_ART_CATEGORIES = new Set([
   'Horse',
   'Bovine',
   'Tool',
+  'Collective',
 ])
 
 function colorDistance(a: Uint8ClampedArray | number[], b: Uint8ClampedArray | number[]) {
@@ -120,6 +121,26 @@ export function preloadPixelArt(url: string) {
 export function getPixelArtDrawable(url: string) {
   preloadPixelArt(url)
   return processedImageCache.get(url) ?? rawImageCache.get(url)
+}
+
+export function getContainedRect(
+  sourceWidth: number,
+  sourceHeight: number,
+  boxX: number,
+  boxY: number,
+  boxSize: number,
+  scaleMultiplier = 1,
+) {
+  const scale = Math.min(boxSize / sourceWidth, boxSize / sourceHeight) * scaleMultiplier
+  const width = sourceWidth * scale
+  const height = sourceHeight * scale
+
+  return {
+    x: boxX + (boxSize - width) / 2,
+    y: boxY + (boxSize - height) / 2,
+    width,
+    height,
+  }
 }
 
 export function shouldUseImportedPixelArt(category: string) {
