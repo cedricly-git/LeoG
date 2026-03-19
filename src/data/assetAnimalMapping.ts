@@ -220,9 +220,9 @@ const stockMappings: Record<string, AnimalMapping> = {
     multiplier: 1,
   },
   PetroChina: {
-    animal: 'Chinese Sorghum',
+    animal: 'Rice',
     animalCategory: 'Grain Crop',
-    image: null,
+    image: '/Images/Cereals/Rice.jpg',
     sector: 'Commodities',
     multiplier: 1,
   },
