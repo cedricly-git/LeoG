@@ -79,6 +79,7 @@ const ZONE_FARM_X1  = 190, ZONE_FARM_X2  = 350
 const ZONE_BUILD_X1 = 360, ZONE_BUILD_X2 = W - 12
 const ZONE_Y1       = SKY_H + 16, ZONE_Y2 = H - 20
 
+
 const FENCE_C     = '#C8A460'
 const FENCE_SH    = '#8B6520'
 
@@ -129,7 +130,7 @@ function spawnCritters(entries: { name: string; category: string }[]): Critter[]
 
     return {
       name, category,
-      x:      rand(ZONE_LIVE_X1 + 8,  ZONE_LIVE_X2 - SPRITE_SZ - 8),
+      x:      rand(ZONE_LIVE_X1 + 8, ZONE_LIVE_X2 - SPRITE_SZ - 8),
       y:      rand(ZONE_Y1 + 10, ZONE_Y2 - SPRITE_SZ - 8),
       vx:     rand(0.45, 1.1) * (Math.random() < 0.5 ? 1 : -1),
       vy:     rand(0.1,  0.35) * (Math.random() < 0.5 ? 1 : -1),
@@ -254,18 +255,34 @@ export function AnimatedFarm({ selected, animalNames, animalCats, imageMap, pixe
       ctx.restore()
     }
 
-    function drawFencePost(x: number, y: number, h: number) {
-      if (!ctx) return
-      ctx.fillStyle = FENCE_C; ctx.fillRect(x - 2, y, 4, h)
-      ctx.fillStyle = FENCE_SH; ctx.fillRect(x + 1, y, 1, h)
-    }
-
     function drawFence() {
       if (!ctx) return
-      const x1 = ZONE_LIVE_X1 - 4, y1 = ZONE_Y1 - 4, x2 = ZONE_LIVE_X2 + 4, y2 = ZONE_Y2 + 4
-      ctx.strokeStyle = FENCE_C; ctx.lineWidth = 1
-      ctx.strokeRect(x1, y1, x2 - x1, y2 - y1)
-      for (let px = x1; px <= x2; px += 25) drawFencePost(px, y1, y2 - y1)
+      const x1 = ZONE_LIVE_X1 - 4, y1 = ZONE_Y1 - 4
+      const x2 = ZONE_LIVE_X2 + 4, y2 = ZONE_Y2 + 4
+      const postH = 12  // posts protrude this many px above/below each rail
+      const rails = [y1 + postH, y1 + Math.round((y2 - y1) * 0.42), y2 - postH]
+
+      // Horizontal rails
+      ctx.fillStyle = FENCE_C
+      for (const ry of rails) {
+        ctx.fillRect(x1, ry - 2, x2 - x1, 4)
+        ctx.fillStyle = FENCE_SH
+        ctx.fillRect(x1, ry + 1, x2 - x1, 1)
+        ctx.fillStyle = FENCE_C
+      }
+      // Short fence posts (only at corners and every 25px)
+      for (let px = x1; px <= x2; px += 25) {
+        ctx.fillStyle = FENCE_C;  ctx.fillRect(px - 2, y1, 4, y2 - y1)
+        ctx.fillStyle = FENCE_SH; ctx.fillRect(px + 1, y1, 1, y2 - y1)
+      }
+      // Re-draw rails on top of posts so posts don't bleed through
+      ctx.fillStyle = FENCE_C
+      for (const ry of rails) {
+        ctx.fillRect(x1, ry - 2, x2 - x1, 4)
+        ctx.fillStyle = FENCE_SH
+        ctx.fillRect(x1, ry + 1, x2 - x1, 1)
+        ctx.fillStyle = FENCE_C
+      }
     }
 
     function drawHouse() {
@@ -310,9 +327,18 @@ export function AnimatedFarm({ selected, animalNames, animalCats, imageMap, pixe
       if (pixUrl) {
         const img = getUrlImg(pixUrl)
         if (img.complete && img.naturalWidth > 0) {
-          ctx.save(); if (c.flip) { ctx.scale(-1, 1); ctx.translate(-dx * 2 - sz, 0) }
-          ctx.imageSmoothingEnabled = false; ctx.beginPath(); ctx.rect(dx, dy, sz, sz); ctx.clip()
-          ctx.drawImage(img, dx, dy, sz, sz); ctx.restore()
+          ctx.save()
+          ctx.imageSmoothingEnabled = false
+          ctx.beginPath(); ctx.rect(dx, dy, sz, sz); ctx.clip()
+          if (c.flip) {
+            ctx.translate(dx + sz / 2, dy)
+            ctx.scale(-1, 1)
+            ctx.translate(-sz / 2, 0)
+            ctx.drawImage(img, 0, 0, sz, sz)
+          } else {
+            ctx.drawImage(img, dx, dy, sz, sz)
+          }
+          ctx.restore()
           return
         }
       }
@@ -339,20 +365,36 @@ export function AnimatedFarm({ selected, animalNames, animalCats, imageMap, pixe
         drawCloud(cloud); cloud.x += cloud.speed; if (cloud.x > W + 80) cloud.x = -80
       }
       drawSun(s.tick); drawTree(24, SKY_H - 10); drawTree(22, SKY_H + 28); drawFence()
+      // Static critters (plants / buildings) drawn without clipping
       for (const c of s.critters) {
-        if (isPlant(c.category) || isBuilding(c.category)) { 
-          drawCritter(c, 0) 
-        } 
-        else {
-          if (c.vx < 0) c.flip = true; if (c.vx > 0) c.flip = false
-          const bob = Math.sin(s.tick * 0.10 + c.bobOff) * 1.8
-          drawCritter(c, bob); c.x += c.vx; c.y += c.vy; c.frame++
-          if (c.x < ZONE_LIVE_X1) c.x = ZONE_LIVE_X1, c.vx = Math.abs(c.vx)
-          if (c.x > ZONE_LIVE_X2 - SPRITE_SZ) c.x = ZONE_LIVE_X2 - SPRITE_SZ, c.vx = -Math.abs(c.vx)
-          if (c.y < ZONE_Y1) c.y = ZONE_Y1, c.vy = Math.abs(c.vy)
-          if (c.y > ZONE_Y2 - SPRITE_SZ) c.y = ZONE_Y2 - SPRITE_SZ, c.vy = -Math.abs(c.vy)
-        }
+        if (isPlant(c.category) || isBuilding(c.category)) drawCritter(c, 0)
       }
+
+      // Moving livestock drawn inside a hard clip matching the pen walls
+      ctx.save()
+      ctx.beginPath()
+      ctx.rect(ZONE_LIVE_X1, ZONE_Y1, ZONE_LIVE_X2 - ZONE_LIVE_X1, ZONE_Y2 - ZONE_Y1)
+      ctx.clip()
+      for (const c of s.critters) {
+        if (isPlant(c.category) || isBuilding(c.category)) continue
+        // 1. Advance position
+        c.x += c.vx
+        c.y += c.vy
+        // 2. Bounce – clamp and reverse velocity before drawing so the sprite
+        //    is never rendered outside the pen, not even for a single frame.
+        if (c.x < ZONE_LIVE_X1) { c.x = ZONE_LIVE_X1; c.vx = Math.abs(c.vx) }
+        if (c.x > ZONE_LIVE_X2 - SPRITE_SZ) { c.x = ZONE_LIVE_X2 - SPRITE_SZ; c.vx = -Math.abs(c.vx) }
+        if (c.y < ZONE_Y1) { c.y = ZONE_Y1; c.vy = Math.abs(c.vy) }
+        if (c.y > ZONE_Y2 - SPRITE_SZ) { c.y = ZONE_Y2 - SPRITE_SZ; c.vy = -Math.abs(c.vy) }
+        // 3. Update facing direction based on post-bounce velocity
+        if (c.vx < 0) c.flip = true
+        if (c.vx > 0) c.flip = false
+        // 4. Draw at the now-verified, clamped position
+        const bob = Math.sin(s.tick * 0.10 + c.bobOff) * 1.8
+        drawCritter(c, bob)
+        c.frame++
+      }
+      ctx.restore()
       drawHouse()
       if (s.critters.length === 0) {
         ctx.fillStyle = 'rgba(44,24,16,0.55)'; ctx.beginPath()

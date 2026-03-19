@@ -68,30 +68,74 @@ export function rollTimeSkips(): number[] {
 }
 
 /**
- * Pick `count` events for a single round, prioritising events that affect
- * the animals the player has actually selected.  Relevant events come first
- * (shuffled), then irrelevant ones fill any remaining slots.  No duplicates.
+ * Pick `count` events for a single round using weighted sampling with two
+ * hard constraints:
+ *
+ * 1. **No asset overlap between the two events.**
+ *    Once an event is chosen, every event that shares even one affected animal
+ *    with it is excluded from subsequent picks.  This prevents both
+ *    "good news + bad news for crypto" and "good news + good news for crypto"
+ *    from appearing in the same round.
+ *
+ * 2. **Weight = Σ units held in affected assets.**
+ *    Heavier positions attract more news — a concentrated bet is more exposed
+ *    to market shocks.  Events that touch no held asset receive a tiny base
+ *    weight (0.05) so they can still appear as rare background noise, but only
+ *    when every relevant event is already excluded by rule 1.
+ *
+ * No duplicate event IDs are returned.  If the overlap constraint cannot be
+ * satisfied (edge case: very small event pool), it is relaxed gracefully.
  */
 export function pickEventsForRound(
-  selectedAnimalNames: string[],
+  portfolio: Array<{ animalName: string; units: number }>,
   count: number = 2,
 ): number[] {
-  const shuffle = <T>(arr: T[]): T[] => [...arr].sort(() => Math.random() - 0.5)
+  const heldNames = new Set(portfolio.map(p => p.animalName))
 
-  const relevant   = GAME_EVENTS.filter(e =>
-    e.affectedAnimalNames.some(n => selectedAnimalNames.includes(n)),
-  )
-  const irrelevant = GAME_EVENTS.filter(e =>
-    !e.affectedAnimalNames.some(n => selectedAnimalNames.includes(n)),
-  )
+  const getWeight = (event: GameEventTemplate): number =>
+    event.affectedAnimalNames.reduce((sum, name) => {
+      const item = portfolio.find(p => p.animalName === name)
+      return sum + (item?.units ?? 0)
+    }, 0)
 
-  const pool   = [...shuffle(relevant), ...shuffle(irrelevant)]
-  const chosen: number[] = []
-  for (const e of pool) {
-    if (chosen.length >= count) break
-    chosen.push(e.id)
+  const chosen: GameEventTemplate[] = []
+  let remaining = [...GAME_EVENTS]
+
+  while (chosen.length < count && remaining.length > 0) {
+    // Build the set of animals already spoken for by chosen events
+    const usedAnimals = new Set(chosen.flatMap(e => e.affectedAnimalNames))
+
+    // Candidates must not share any affected animal with already-chosen events
+    let candidates = remaining.filter(
+      e => !e.affectedAnimalNames.some(n => usedAnimals.has(n)),
+    )
+    // Safety fallback: if every remaining event overlaps, relax the constraint
+    if (candidates.length === 0) candidates = [...remaining]
+
+    // Give near-zero weight to events that touch no held asset so they only
+    // appear when no relevant candidate survives the overlap filter
+    const anyRelevant = candidates.some(e =>
+      e.affectedAnimalNames.some(n => heldNames.has(n)),
+    )
+    const weights = candidates.map(e => {
+      const w = getWeight(e)
+      return w > 0 ? w : (anyRelevant ? 0.05 : 1)
+    })
+
+    const total = weights.reduce((a, b) => a + b, 0)
+    let rand = Math.random() * total
+    let idx = candidates.length - 1   // default: last (float-point safety)
+    for (let i = 0; i < candidates.length; i++) {
+      rand -= weights[i]
+      if (rand <= 0) { idx = i; break }
+    }
+
+    const picked = candidates[idx]
+    chosen.push(picked)
+    remaining = remaining.filter(e => e.id !== picked.id)
   }
-  return chosen
+
+  return chosen.map(e => e.id)
 }
 
 export function advanceDate(baseDate: Date, days: number): Date {

@@ -39,6 +39,7 @@ export const GAME_EVENTS: GameEventTemplate[] = [
       'French Soft Winter Wheat',
       'Alpine Barley',
       'American Yellow Corn',
+      'Rice',
     ],
   },
   {
@@ -282,6 +283,7 @@ export const GAME_EVENTS: GameEventTemplate[] = [
       "The Prize Pig Breeders' Association",
       'The Local Piglet Pen',
       'Swiss Landrace Pig',
+      'Berkshire Pig',
     ],
   },
 
@@ -499,6 +501,178 @@ export const GAME_EVENTS: GameEventTemplate[] = [
     affectedAnimalNames: [
       'Chinese Sorghum',
       'The American Free-Range Flock',
+    ],
+  },
+  // ── Balancing events: every asset type gets both a positive and a negative ──
+
+  {
+    id: 23,
+    title: 'The Lame Season — Hoof Injuries Ground the Stables',
+    impactLabel: 'Horses, Ponies & The Draft Horse Syndicate',
+    description:
+      'An unusually wet spring turns every paddock into deep, uneven mud — and horses, unlike cattle, ' +
+      'are uniquely vulnerable to the soft, shifting ground beneath their hooves. ' +
+      'The American Quarter Horse sprains a fetlock during morning work. The Mustang develops thrush in both front feet. ' +
+      'The Taiwanese Pony, the American Saddlebred, and the Morgan Horse all show signs of soreness ' +
+      'and refuse to perform at their usual level. ' +
+      'The Draft Horse Syndicate reports its slowest haulage season in years as its teams limp through every delivery. ' +
+      'A lame horse does no work, wins no races, and earns nothing at auction — ' +
+      'and a stable full of lame horses is a stable full of liability.',
+    icon: '🩹',
+    color: '#92400E',
+    eventNumber: 6,
+    isPositive: false,
+    affectedAnimalNames: [
+      'American Quarter Horse',
+      'Mustang',
+      'Taiwanese Pony',
+      'American Saddlebred',
+      'Morgan Horse',
+      'The Draft Horse Syndicate',
+    ],
+  },
+  {
+    id: 24,
+    title: 'The Valley Distemper — Guard Dogs Grounded Across Every Ranch',
+    impactLabel: 'Guard Dogs, Kennels & K-9 Training Camps',
+    description:
+      'A fast-moving respiratory illness sweeps through the valley\'s canine population, ' +
+      'and the working dogs — the ones who never miss a patrol, never sleep on the job — are hit hardest of all. ' +
+      'The Dogue de Bordeaux, normally immovable at the gate, lies flat with fever. ' +
+      'The American Bulldog\'s famous tenacity counts for nothing against a disease that attacks the lungs. ' +
+      'The Foxhound\'s legendary nose is useless when its head rings with illness. ' +
+      'German and Dutch Shepherds alike are pulled from duty and quarantined in separate pens. ' +
+      'The Working Dog Kennel and the Tactical K-9 Training Camp cancel contracts and return deposits. ' +
+      'A guard dog that cannot stand is worth nothing — and the farms it was protecting are suddenly exposed.',
+    icon: '🤧',
+    color: '#6B7280',
+    eventNumber: 6,
+    isPositive: false,
+    affectedAnimalNames: [
+      'Dogue de Bordeaux',
+      'American Bulldog',
+      'American Foxhound',
+      'German Shepherd',
+      'Dutch Shepherd',
+      'The Working Dog Kennel',
+      'The Tactical K-9 Training Camp',
+    ],
+  },
+  {
+    id: 25,
+    title: 'The Root Blight — A Silent Fungus Destroys the Herb Gardens',
+    impactLabel: 'Medicinal Herbs & Greenhouse Collections',
+    description:
+      'An airborne fungal spore — too small to see and too resilient to stop — enters the valley\'s herb gardens ' +
+      'and spreads silently through root systems before anyone realises what is happening. ' +
+      'Arnica and Valerian Root blacken at the stem. Gentian, Echinacea, and Rosehip fail to flower entirely. ' +
+      'The Alpine Herb Conservatory loses its entire spring crop in a single week. ' +
+      'The Experimental Hybrid Seed Greenhouse, normally a model of controlled growing conditions, ' +
+      'cannot prevent the spores from penetrating its ventilation system. ' +
+      'Buyers who were counting on a steady supply of healing herbs find their orders cancelled without notice — ' +
+      'and a plant that cannot be harvested has no value at all.',
+    icon: '🍄',
+    color: '#78350F',
+    eventNumber: 6,
+    isPositive: false,
+    affectedAnimalNames: [
+      'Arnica',
+      'Gentian',
+      'Echinacea',
+      'Rosehip',
+      'Valerian Root',
+      'The Alpine Herb Conservatory',
+      'The Experimental Hybrid Seed Greenhouse',
+    ],
+  },
+  {
+    id: 26,
+    title: 'The Workshop Collapse — Tools Flood the Market, Prices Crater',
+    impactLabel: 'Farm Tools (Hammer, Axe & Chainsaw)',
+    description:
+      'A large neighbouring estate — known for hoarding every tool it could find during the construction rush — ' +
+      'suddenly liquidates its entire workshop inventory all at once. ' +
+      'Hammers, axes, and chainsaws flood the valley market faster than any buyer can absorb them. ' +
+      'When supply overwhelms demand this suddenly, price is the first casualty. ' +
+      'Farmers who were storing value in tools watch their holdings lose ground by the day ' +
+      'as the glut shows no sign of clearing. ' +
+      'What was scarce and prized last season is suddenly everywhere — ' +
+      'and in this valley, abundance is the sworn enemy of price.',
+    icon: '📉',
+    color: '#1F2937',
+    eventNumber: 8,
+    isPositive: false,
+    affectedAnimalNames: [
+      'Hammer',
+      'Axe',
+      'Chainsaw',
+    ],
+  },
+  {
+    id: 27,
+    title: 'The Valley Enclosure — Open Pastures Seized, Free-Range Flocks Scattered',
+    impactLabel: 'Free-Range Flocks & Open Grazing Land',
+    description:
+      'A long-running dispute over unclaimed grazing land reaches its conclusion when the valley council ' +
+      'rules in favour of fencing off the common pastures once and for all. ' +
+      'The American Free-Range Flock, whose entire value was built on the freedom to roam wide-open acres, ' +
+      'is suddenly confined to a fraction of its former range. ' +
+      'Crowded animals graze poorly, grow more slowly, and are far more susceptible to disease. ' +
+      'The flock\'s reputation for independence and vigour — the very qualities that commanded its premium at market — ' +
+      'vanishes the moment the last gate is padlocked shut. ' +
+      'A free-range animal that is no longer free is simply an ordinary animal, worth a great deal less.',
+    icon: '🚧',
+    color: '#374151',
+    eventNumber: 4,
+    isPositive: false,
+    affectedAnimalNames: [
+      'The American Free-Range Flock',
+    ],
+  },
+  {
+    id: 28,
+    title: 'The Reserve Audit — Vault Holdings Revealed to Be Far Less Than Promised',
+    impactLabel: 'Concrete Grain Reserve (Stored Value Vault)',
+    description:
+      'An independent audit of the valley\'s most trusted grain vault delivers a shock: ' +
+      'the Concrete Grain Reserve holds only two-thirds of what appeared on the last official ledger. ' +
+      'Decades of quiet withdrawals — each one small enough to go unnoticed — have compounded into a yawning gap ' +
+      'between what farmers believed was stored and what is actually there. ' +
+      'Trust in the reserve collapses within hours of the report\'s publication. ' +
+      'Farmers who treated it as an indestructible store of value rush to reassess their exposure. ' +
+      'A vault only holds its worth for as long as people believe in it — and that belief has just cracked.',
+    icon: '🔍',
+    color: '#4B5563',
+    eventNumber: 4,
+    isPositive: false,
+    affectedAnimalNames: [
+      'The Concrete Grain Reserve',
+    ],
+  },
+  {
+    id: 29,
+    title: 'The Golden Harvest — Record Yields Fill Every Field and Silo',
+    impactLabel: 'Grain Crops, Rice Paddies & Winter-Wheat Silos',
+    description:
+      'A perfect growing season — warm days, measured rain, and not a cloud too many — ' +
+      'produces a harvest so abundant that every grain farmer in the valley runs out of storage space. ' +
+      'Alpine Barley, Australian White Wheat, French Soft Winter Wheat, and American Yellow Corn all ' +
+      'come in at record yields. The paddy fields flood with the richest Rice crop merchants have bought in years. ' +
+      'The Strategic Winter-Wheat Silo, normally half-empty by this point in the season, fills to the very top ' +
+      'and must turn away late arrivals at the gate. ' +
+      'When crops overflow and buyers compete for every bushel, the farmer who planted early and tended carefully ' +
+      'collects far more at market than any forecast suggested was possible.',
+    icon: '🌈',
+    color: '#4D7C0F',
+    eventNumber: 6,
+    isPositive: true,
+    affectedAnimalNames: [
+      'Alpine Barley',
+      'Australian White Wheat',
+      'French Soft Winter Wheat',
+      'American Yellow Corn',
+      'Rice',
+      'The Strategic Winter-Wheat Silo',
     ],
   },
 ]

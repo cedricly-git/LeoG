@@ -1,6 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useMutation } from 'convex/react'
+import { api } from '../../convex/_generated/api'
+import type { Id } from '../../convex/_generated/dataModel'
 import { PixelAnimal, PIXEL_SPRITES } from '../components/PixelAnimal'
+import { AnimatedFarm } from '../components/AnimatedFarm'
+import { StrategyAdvisor } from '../components/StrategyAdvisor'
+import { UserProfileScreen } from '../components/UserProfileScreen'
 import { ASSET_ANIMAL_MAP, type AnimalCategory } from '../data/assetAnimalMapping'
 import { loadAllCsvData, type CsvDataMap, type MultiplierMap } from '../lib/csvLoader'
 import {
@@ -11,52 +17,138 @@ import {
   formatPnl, formatPct, formatMonthYear,
   type PortfolioItem, type RoundResult,
 } from '../lib/gameEngine'
-import { GAME_EVENTS, getEventById } from '../data/events'
+import { getEventById } from '../data/events'
 
-import BerkshirePig   from '../../Images/Pigs/Berkshirepig.jpg'
-import SwissPig       from '../../Images/Pigs/Swisspig.jpg'
-import MeishanPig     from '../../Images/Pigs/Meishanpig.jpg'
-import HampshirePig   from '../../Images/Pigs/Hampshirepig.jpg'
-import DurocPig       from '../../Images/Pigs/Durocpig.jpg'
-import DogueBordeaux  from '../../Images/GuardDogs/Doguedebordeaux.jpg'
-import AmBulldog      from '../../Images/GuardDogs/Americanbulldog.jpg'
-import AmFoxhound     from '../../Images/GuardDogs/Americanfoxhound.jpg'
+// ?? Pigs ??????????????????????????????????????????????????????????????????????
+import BerkshirePig from '../../Images/Pigs/Berkshirepig.jpg'
+import SwissPig from '../../Images/Pigs/Swisspig.jpg'
+import MeishanPig from '../../Images/Pigs/Meishanpig.jpg'
+import HampshirePig from '../../Images/Pigs/Hampshirepig.jpg'
+import DurocPig from '../../Images/Pigs/Durocpig.jpg'
+// ?? Guard Dogs ????????????????????????????????????????????????????????????????
+import DogueBordeaux from '../../Images/GuardDogs/Doguedebordeaux.jpg'
+import AmBulldog from '../../Images/GuardDogs/Americanbulldog.jpg'
+import AmFoxhound from '../../Images/GuardDogs/Americanfoxhound.jpg'
 import GermanShepherd from '../../Images/GuardDogs/Germanshepherd.jpg'
-import DutchShepherd  from '../../Images/GuardDogs/Dutchshepherd.jpg'
+import DutchShepherd from '../../Images/GuardDogs/Dutchshepherd.jpg'
+// ?? Horses ????????????????????????????????????????????????????????????????????
+import AmQuarterHorse from '../../Images/Horses/Americanhorse.jpg'
+import MorganHorse from '../../Images/Horses/Morganhorse.jpg'
+import Mustang from '../../Images/Horses/Mustang.jpg'
+import TaiwaneseHorse from '../../Images/Horses/Poney.jpg'
+import Saddlebred from '../../Images/Horses/Saddleberghorse.jpg'
+// ?? Cows (Bonds) ??????????????????????????????????????????????????????????????
+import SwissCow from '../../Images/Cows/Swisscow.jpg'
+import DevonCow from '../../Images/Cows/Devoncow.jpg'
+import Bison from '../../Images/Cows/Bison.jpg'
+import Yak from '../../Images/Cows/Yak.jpg'
+import CharolaisCow from '../../Images/Cows/Charloraiscow.jpg'
+import FleckviehCow from '../../Images/Cows/Fleckviehcow.jpg'
+import BrahmanCow from '../../Images/Cows/Brahmancow.jpg'
+// ?? Herbs (Pharma) ????????????????????????????????????????????????????????????
+import Arnica from '../../Images/Herbs/Arnica.jpg'
+import Gentian from '../../Images/Herbs/Gentian.jpg'
+import Echinacea from '../../Images/Herbs/Echinacea.jpg'
+import Rosehip from '../../Images/Herbs/Rosehip.jpg'
+import ValerianRoot from '../../Images/Herbs/Valerianroot.jpg'
+// ?? Cereals (Commodities) ?????????????????????????????????????????????????????
+import AlpineBarley from '../../Images/Cereals/Barley.jpg'
+import WhiteWheat from '../../Images/Cereals/Whitewheat.jpg'
+import WinterWheat from '../../Images/Cereals/Winterwheat.png'
+import YellowCorn from '../../Images/Cereals/Corn.jpg'
+// ?? Tools (Crypto) ????????????????????????????????????????????????????????????
+import HammerImg from '../../Images/Tools/Hammer.jpg'
+import AxeImg from '../../Images/Tools/Axe.jpg'
+import ChainsawImg from '../../Images/Tools/Chainsaw.jpg'
+import RiceImg from '../../Images/Cereals/Rice.jpg'
+// ?? Pixel Arts ????????????????????????????????????????????????????????????????
+import PixelPig from '../../Images/PixelArts/Pixelpig.jpeg'
+import PixelDog from '../../Images/PixelArts/Pixeldog.jpeg'
+import PixelHorse from '../../Images/PixelArts/Pixelhorse.jpeg'
+import PixelCow from '../../Images/PixelArts/Pixelcow.jpeg'
 
 export const Route = createFileRoute('/')({
   component: LandingV2,
 })
 
-type GamePhase = 'selection' | 'locking' | 'round-active' | 'round-recap' | 'game-over'
+type GamePhase = 'profile' | 'selection' | 'locking' | 'round-active' | 'round-recap' | 'game-over'
 
 // ?? Image lookup ????????????????????????????????????????????????????????????
 const IMAGE_MAP: Record<string, string> = {
-  'Berkshire Pig':      BerkshirePig,
+  // Pigs
+  'Berkshire Pig': BerkshirePig,
   'Swiss Landrace Pig': SwissPig,
-  'Meishan Pig':        MeishanPig,
-  'Hampshire Pig':      HampshirePig,
+  'Meishan Pig': MeishanPig,
+  'Hampshire Pig': HampshirePig,
   'American Duroc Pig': DurocPig,
-  'Dogue de Bordeaux':  DogueBordeaux,
-  'American Bulldog':   AmBulldog,
-  'American Foxhound':  AmFoxhound,
-  'German Shepherd':    GermanShepherd,
-  'Dutch Shepherd':     DutchShepherd,
+  // Guard Dogs
+  'Dogue de Bordeaux': DogueBordeaux,
+  'American Bulldog': AmBulldog,
+  'American Foxhound': AmFoxhound,
+  'German Shepherd': GermanShepherd,
+  'Dutch Shepherd': DutchShepherd,
+  // Horses
+  'American Quarter Horse': AmQuarterHorse,
+  'Morgan Horse': MorganHorse,
+  'Mustang': Mustang,
+  'Taiwanese Pony': TaiwaneseHorse,
+  'American Saddlebred': Saddlebred,
+  // Bonds ? Cows
+  'Swiss Cow': SwissCow,
+  'American Milking Devon Cow': DevonCow,
+  'Bison': Bison,
+  'Yak': Yak,
+  'Charolais Cow': CharolaisCow,
+  'Fleckvieh Cow': FleckviehCow,
+  'American Brahman Cow': BrahmanCow,
+  // Herbs (Pharma)
+  'Arnica': Arnica,
+  'Gentian': Gentian,
+  'Echinacea': Echinacea,
+  'Rosehip': Rosehip,
+  'Valerian Root': ValerianRoot,
+  // Cereals (Commodities)
+  'Alpine Barley': AlpineBarley,
+  'Australian White Wheat': WhiteWheat,
+  'French Soft Winter Wheat': WinterWheat,
+  'American Yellow Corn': YellowCorn,
+  // Tools (Crypto)
+  'Hammer': HammerImg,
+  'Axe': AxeImg,
+  'Chainsaw': ChainsawImg,
+  'Rice': RiceImg,
+}
+
+// Pixel art fallback map ? used in AnimatedFarm canvas for categories
+// that don't have per-breed pixel sprites yet
+const PIXEL_IMAGE_MAP: Record<string, string> = {
+  'Pig': PixelPig,
+  'Guard Dog': PixelDog,
+  'Horse': PixelHorse,
+  'Bovine': PixelCow,
 }
 
 // ?? Per-animal-category display metadata ????????????????????????????????????
 const CATEGORY_META: Record<AnimalCategory, {
-  emoji: string; badge: string; badgeColor: string; risk: number; returnProfile: string; sectorLabel: string
+  emoji: string; badge: string; badgeColor: string; sectorLabel: string
 }> = {
-  'Pig':             { emoji: '\u{1F437}', badge: 'FINANCE',     badgeColor: '#1D5FA0', risk: 2, returnProfile: '+8.5% avg. annual', sectorLabel: 'Finance' },
-  'Guard Dog':       { emoji: '\u{1F415}', badge: 'DEFENSE',     badgeColor: '#8B4513', risk: 3, returnProfile: '+11% avg. annual',  sectorLabel: 'Defense' },
-  'Horse':           { emoji: '\u{1F434}', badge: 'TECH',        badgeColor: '#6D28D9', risk: 4, returnProfile: '+18% avg. annual',  sectorLabel: 'Tech' },
-  'Medicinal Plant': { emoji: '\u{1F33F}', badge: 'PHARMA',      badgeColor: '#2D6A4F', risk: 2, returnProfile: '+6% avg. annual',   sectorLabel: 'Pharma' },
-  'Grain Crop':      { emoji: '\u{1F33E}', badge: 'COMMODITIES', badgeColor: '#B8860B', risk: 3, returnProfile: '+7% avg. annual',   sectorLabel: 'Commodities' },
-  'Bovine':          { emoji: '\u{1F404}', badge: 'BONDS',       badgeColor: '#2D6A4F', risk: 1, returnProfile: '+3.5% avg. annual', sectorLabel: 'Bonds' },
-  'Collective':      { emoji: '\u{1F3E1}', badge: 'ETF',         badgeColor: '#475569', risk: 2, returnProfile: '+6-15% avg. annual',sectorLabel: 'ETFs' },
-  'Tool':            { emoji: '\u26CF\uFE0F', badge: 'CRYPTO',   badgeColor: '#6D28D9', risk: 5, returnProfile: 'x multiplier',      sectorLabel: 'Crypto' },
-  'Hedge':           { emoji: '\u{1FAB4}',   badge: 'HEDGE',    badgeColor: '#B8860B', risk: 1, returnProfile: 'store of value',     sectorLabel: 'Hedge' },
+  'Pig': { emoji: '\u{1F437}', badge: 'FINANCE', badgeColor: '#1D5FA0', sectorLabel: 'Finance' },
+  'Guard Dog': { emoji: '\u{1F415}', badge: 'DEFENSE', badgeColor: '#8B4513', sectorLabel: 'Defense' },
+  'Horse': { emoji: '\u{1F434}', badge: 'TECH', badgeColor: '#6D28D9', sectorLabel: 'Tech' },
+  'Medicinal Plant': { emoji: '\u{1F33F}', badge: 'PHARMA', badgeColor: '#2D6A4F', sectorLabel: 'Pharma' },
+  'Grain Crop': { emoji: '\u{1F33E}', badge: 'COMMODITIES', badgeColor: '#B8860B', sectorLabel: 'Commodities' },
+  'Bovine': { emoji: '\u{1F404}', badge: 'BONDS', badgeColor: '#2D6A4F', sectorLabel: 'Bonds' },
+  'Collective': { emoji: '\u{1F3E1}', badge: 'ETF', badgeColor: '#475569', sectorLabel: 'ETFs' },
+  'Tool': { emoji: '\u26CF\uFE0F', badge: 'CRYPTO', badgeColor: '#6D28D9', sectorLabel: 'Crypto' },
+  'Hedge': { emoji: '\u{1FAB4}', badge: 'HEDGE', badgeColor: '#B8860B', sectorLabel: 'Hedge' },
+}
+
+function multiplierToRisk(m: number): number {
+  if (m <= 0.25) return 1
+  if (m <= 1) return 2
+  if (m <= 2.5) return 3
+  if (m <= 4) return 4
+  return 5
 }
 
 // ?? Build flat livestock list ????????????????????????????????????????????????
@@ -72,6 +164,8 @@ const LIVESTOCK = Object.entries(ASSET_ANIMAL_MAP)
       sector: m.sector,
       image: IMAGE_MAP[m.animal] ?? null,
       multiplier: m.multiplier,
+      returnProfile: m.returnProfile,
+      risk: multiplierToRisk(m.multiplier),
       ...meta,
     }
   })
@@ -80,18 +174,18 @@ const LIVESTOCK = Object.entries(ASSET_ANIMAL_MAP)
 type AssetType = 'Stock' | 'Bond' | 'ETF' | 'Crypto' | 'Hedge'
 
 const ASSET_TYPE_META: Record<AssetType, { emoji: string; label: string; color: string }> = {
-  Stock:  { emoji: '\u{1F4C8}',   label: 'Stock',  color: '#C4622D' },
-  Bond:   { emoji: '\u{1F3E6}',   label: 'Bond',   color: '#2D6A4F' },
-  ETF:    { emoji: '\u{1F4CA}',   label: 'ETF',    color: '#475569' },
+  Stock: { emoji: '\u{1F4C8}', label: 'Stock', color: '#C4622D' },
+  Bond: { emoji: '\u{1F3E6}', label: 'Bond', color: '#2D6A4F' },
+  ETF: { emoji: '\u{1F4CA}', label: 'ETF', color: '#475569' },
   Crypto: { emoji: '\u26CF\uFE0F', label: 'Crypto', color: '#6D28D9' },
-  Hedge:  { emoji: '\u{1F947}',   label: 'Hedge',  color: '#B8860B' },
+  Hedge: { emoji: '\u{1F947}', label: 'Hedge', color: '#B8860B' },
 }
 
 function resolveAssetType(sector: string): AssetType {
-  if (sector === 'Bond')   return 'Bond'
-  if (sector === 'ETF')    return 'ETF'
+  if (sector === 'Bond') return 'Bond'
+  if (sector === 'ETF') return 'ETF'
   if (sector === 'Crypto') return 'Crypto'
-  if (sector === 'Hedge')  return 'Hedge'
+  if (sector === 'Hedge') return 'Hedge'
   return 'Stock'
 }
 
@@ -104,10 +198,10 @@ const ASSET_TYPE_ORDER: AssetType[] = ['Stock', 'Bond', 'ETF', 'Crypto', 'Hedge'
 
 // ?? Stock sub-groups ?????????????????????????????????????????????????????????
 const STOCK_SUBGROUPS = [
-  { sector: 'Finance',     emoji: '\u{1F437}', label: 'Finance',     color: '#1D5FA0' },
-  { sector: 'Defense',     emoji: '\u{1F415}', label: 'Defense',     color: '#8B4513' },
-  { sector: 'Tech',        emoji: '\u{1F434}', label: 'Tech',        color: '#6D28D9' },
-  { sector: 'Pharma',      emoji: '\u{1F33F}', label: 'Pharma',      color: '#2D6A4F' },
+  { sector: 'Finance', emoji: '\u{1F437}', label: 'Finance', color: '#1D5FA0' },
+  { sector: 'Defense', emoji: '\u{1F415}', label: 'Defense', color: '#8B4513' },
+  { sector: 'Tech', emoji: '\u{1F434}', label: 'Tech', color: '#6D28D9' },
+  { sector: 'Pharma', emoji: '\u{1F33F}', label: 'Pharma', color: '#2D6A4F' },
   { sector: 'Commodities', emoji: '\u{1F33E}', label: 'Commodities', color: '#B8860B' },
 ]
 
@@ -191,15 +285,7 @@ function AnimalCard({
             display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap',
           }}>
             {animal.animalCategory !== 'Hedge' && <span>{animal.assetName}</span>}
-            {animal.animalCategory === 'Tool' ? (
-              <span style={{
-                fontSize: '10px', padding: '1px 7px', borderRadius: '10px',
-                background: '#6D28D915', color: '#6D28D9',
-                border: '1px solid #6D28D940', fontWeight: 600,
-              }}>&times;{animal.multiplier} multiplier</span>
-            ) : (
-              <span>{animal.returnProfile}</span>
-            )}
+            <span>{animal.returnProfile}</span>
           </div>
           <div style={{ marginTop: '4px', display: 'flex', gap: '6px', alignItems: 'center' }}>
             <span style={{ fontSize: '10px', color: '#B89070', fontFamily: '"Lora", serif' }}>Risk:</span>
@@ -249,53 +335,6 @@ function AnimalCard({
   )
 }
 
-// ?? Season farm canvas (shared between selection + season views) ?????????????
-function FarmCanvas({ selected }: { selected: Record<string, number> }) {
-  const totalUnits = Object.values(selected).reduce((a, b) => a + b, 0)
-  return (
-    <div style={{
-      width: '100%', maxWidth: '480px', aspectRatio: '4/3',
-      background: 'linear-gradient(180deg, #87CEEB 0%, #87CEEB 40%, #4A7C4E 40%, #4A7C4E 100%)',
-      border: '3px solid #2C1810', borderRadius: '4px', position: 'relative', overflow: 'hidden',
-      boxShadow: '8px 8px 0 rgba(44,24,16,0.25)',
-    }}>
-      <div style={{ position: 'absolute', top: '8px', left: '16px', fontSize: '20px', opacity: 0.7 }}>&#x2601;&#xFE0F; &#x2601;&#xFE0F;</div>
-      <div style={{ position: 'absolute', top: '6px', right: '24px', fontSize: '24px', opacity: 0.8 }}>&#x2600;&#xFE0F;</div>
-      <div style={{ position: 'absolute', right: '20px', bottom: '20px', fontSize: '48px', filter: 'drop-shadow(2px 2px 0 rgba(0,0,0,0.3))' }}>&#x1F3DA;&#xFE0F;</div>
-
-      {totalUnits === 0 ? (
-        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ fontSize: '13px', fontFamily: '"Playfair Display", serif', color: '#FAF4E8', textShadow: '1px 1px 0 rgba(0,0,0,0.5)', textAlign: 'center', padding: '16px', background: 'rgba(44,24,16,0.5)', borderRadius: '4px' }}>
-            Your farm is empty.<br /><em>Add livestock to bring it to life.</em>
-          </div>
-        </div>
-      ) : (
-        <div style={{ position: 'absolute', bottom: '8px', left: 0, right: 0, display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '4px', padding: '0 8px' }}>
-          {Object.entries(selected).flatMap(([id, count]) => {
-            const a = LIVESTOCK.find(l => l.id === id)!
-            return Array.from({ length: Math.min(count, 6) }, (_, i) => (
-              PIXEL_SPRITES[a.animalName] ? (
-                <PixelAnimal
-                  key={`${id}-${i}`}
-                  name={a.animalName}
-                  size={52}
-                  style={{
-                    borderRadius: '3px',
-                    border: '2px solid rgba(255,255,255,0.45)',
-                    boxShadow: '2px 2px 0 rgba(0,0,0,0.45)',
-                    background: '#4A7C4E',
-                  }}
-                />
-              ) : (
-                <span key={`${id}-${i}`} style={{ fontSize: '28px' }}>{a.emoji}</span>
-              )
-            ))
-          })}
-        </div>
-      )}
-    </div>
-  )
-}
 
 // ?? Locking overlay ??????????????????????????????????????????????????????????
 function LockOverlay({ phase, round }: { phase: GamePhase; round: number }) {
@@ -320,7 +359,7 @@ function LockOverlay({ phase, round }: { phase: GamePhase; round: number }) {
         boxShadow: '0 0 0 1px rgba(245,200,66,0.3), inset 0 0 0 1px rgba(245,200,66,0.2), 0 0 60px rgba(245,200,66,0.12)',
         animation: 'frameReveal 0.7s cubic-bezier(0.34,1.56,0.64,1) 0.25s both',
       }}>
-        {(['tl','tr','bl','br'] as const).map(pos => (
+        {(['tl', 'tr', 'bl', 'br'] as const).map(pos => (
           <div key={pos} style={{
             position: 'absolute',
             width: '20px', height: '20px',
@@ -365,21 +404,31 @@ function LockOverlay({ phase, round }: { phase: GamePhase; round: number }) {
 
 // ?? Main component ????????????????????????????????????????????????????????????
 export default function LandingV2() {
-  const [selected, setSelected]     = useState<Record<string, number>>({})
-  const [expanded, setExpanded]     = useState<string | null>(null)
-  const [activeTab, setActiveTab]   = useState<AssetType>('Stock')
-  const [gamePhase, setGamePhase]   = useState<GamePhase>('selection')
+  const [selected, setSelected] = useState<Record<string, number>>({})
+  const [expanded, setExpanded] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<AssetType>('Stock')
+  const [gamePhase, setGamePhase] = useState<GamePhase>('profile')
+
+  // User / game identity
+  const [userName, setUserName]             = useState('')
+  const [currentUserId, setCurrentUserId]   = useState<Id<'users'> | null>(null)
+  const [currentGameId, setCurrentGameId]   = useState<Id<'games'> | null>(null)
+
+  // Convex mutations
+  const createGameMutation     = useMutation(api.games.createGame)
+  const saveRoundMutation      = useMutation(api.rounds.saveRound)
+  const completeGameMutation   = useMutation(api.games.completeGame)
+  const updateUserStatsMutation = useMutation(api.users.updateUserStats)
 
   // CSV data
-  const [csvData, setCsvData]             = useState<CsvDataMap | null>(null)
+  const [csvData, setCsvData] = useState<CsvDataMap | null>(null)
   const [multiplierMap, setMultiplierMap] = useState<MultiplierMap>(new Map())
-  const [csvLoading, setCsvLoading]       = useState(true)
+  const [csvLoading, setCsvLoading] = useState(true)
 
   // Round system
   const [currentRound, setCurrentRound]       = useState(1)
   const [currentCsvDate, setCurrentCsvDate]   = useState<Date>(SESSION_START_DATE)
   const [roundTimeSkips, setRoundTimeSkips]   = useState<number[]>([])
-  // Each round stores a pair of event IDs: number[][]
   const [roundEventIds, setRoundEventIds]     = useState<number[][]>([])
   const [roundHistory, setRoundHistory]       = useState<RoundResult[]>([])
   const [currentResult, setCurrentResult]     = useState<RoundResult | null>(null)
@@ -389,9 +438,9 @@ export default function LandingV2() {
   const [activeStep, setActiveStep] = useState<'time-skip' | 'event-1' | 'event-2'>('time-skip')
 
   // Budget: $1000 for round 1, then carry-over value (floored to nearest unit cost)
-  const budget     = currentRound === 1 ? 1000 : Math.floor(portfolioValue / UNIT_COST) * UNIT_COST
+  const budget = currentRound === 1 ? 1000 : Math.floor(portfolioValue / UNIT_COST) * UNIT_COST
   const totalUnits = Object.values(selected).reduce((a, b) => a + b, 0)
-  const spent      = totalUnits * UNIT_COST
+  const spent = totalUnits * UNIT_COST
 
   // Load all CSV data on mount
   useEffect(() => {
@@ -431,28 +480,30 @@ export default function LandingV2() {
     return Object.entries(selected).map(([id, units]) => {
       const a = LIVESTOCK.find(l => l.id === id)!
       return {
-        assetName:     a.assetName,
-        animalName:    a.animalName,
+        assetName: a.assetName,
+        animalName: a.animalName,
         animalCategory: a.animalCategory,
         units,
-        multiplier:    a.multiplier,
+        multiplier: a.multiplier,
       }
     })
   }
 
   function handleLock() {
-    // Pre-roll all 7 time skips on the very first lock
-    if (currentRound === 1) {
+    // Pre-roll all 7 time skips on the very first lock (they don't depend on portfolio)
+    if (currentRound === 1 && roundTimeSkips.length === 0) {
       setRoundTimeSkips(rollTimeSkips())
     }
-    // Pick 2 events relevant to THIS round's selections (done every round)
-    const selectedAnimalNames = buildPortfolioItems().map(p => p.animalName)
-    const eventPair = pickEventsForRound(selectedAnimalNames, 2)
+
+    // Pick 2 events for THIS round weighted by how many units the player holds
+    // in each affected asset ? heavier positions attract more news.
+    const eventIdsForRound = pickEventsForRound(buildPortfolioItems(), 2)
     setRoundEventIds(prev => {
       const updated = [...prev]
-      updated[currentRound - 1] = eventPair
+      updated[currentRound - 1] = eventIdsForRound
       return updated
     })
+
     setActiveStep('time-skip')
     setGamePhase('locking')
     setTimeout(() => setGamePhase('round-active'), 1800)
@@ -464,7 +515,7 @@ export default function LandingV2() {
     setActiveStep('time-skip')
     const t1 = setTimeout(() => setActiveStep('event-1'), 2000)
     return () => { clearTimeout(t1) }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gamePhase])
 
   /** Advance from event-1 card to event-2 card */
@@ -477,9 +528,9 @@ export default function LandingV2() {
     if (!csvData) { setGamePhase('round-recap'); return }
     const roundIdx  = currentRound - 1
     const skipDays  = roundTimeSkips[roundIdx] ?? 30
-    const eventIds  = roundEventIds[roundIdx]  ?? []
+    const eventIds  = roundEventIds[roundIdx] ?? [1]
     const startDate = currentCsvDate
-    const endDate   = advanceDate(currentCsvDate, skipDays)
+    const endDate = advanceDate(currentCsvDate, skipDays)
     const portfolio = buildPortfolioItems()
     const events    = eventIds.map(id => getEventById(id))
     const result    = calculateRoundPnl(
@@ -491,6 +542,18 @@ export default function LandingV2() {
     setGamePhase('round-recap')
   }
 
+  const handleBeginGame = useCallback(async (userId: Id<'users'>, name: string) => {
+    setCurrentUserId(userId)
+    setUserName(name)
+    try {
+      const gameId = await createGameMutation({ userId })
+      setCurrentGameId(gameId)
+    } catch (err) {
+      console.error('Failed to create game record:', err)
+    }
+    setGamePhase('selection')
+  }, [createGameMutation])
+
   function handleRoundComplete() {
     if (!currentResult) return
     const newHistory = [...roundHistory, currentResult]
@@ -499,7 +562,57 @@ export default function LandingV2() {
     // Advance the CSV cursor
     setCurrentCsvDate(currentResult.endDate)
 
+    // Persist round to Convex
+    if (currentUserId && currentGameId) {
+      saveRoundMutation({
+        gameId: currentGameId,
+        userId: currentUserId,
+        roundNumber: currentResult.round,
+        portfolioValueBefore: currentResult.portfolioValueBefore,
+        portfolioValueAfter: currentResult.portfolioValueAfter,
+        totalPnl: currentResult.totalPnl,
+        startDate: currentResult.startDate.toISOString(),
+        endDate: currentResult.endDate.toISOString(),
+        timeSkipDays: currentResult.timeSkipDays,
+        eventIds: currentResult.eventIds,
+        portfolioChoices: currentResult.assetResults.map(r => ({
+          assetName: r.assetName,
+          animalName: r.animalName,
+          units: r.units,
+        })),
+        assetResults: currentResult.assetResults.map(r => ({
+          assetName: r.assetName,
+          animalName: r.animalName,
+          animalCategory: r.animalCategory as string,
+          units: r.units,
+          multiplier: r.multiplier,
+          startPrice: r.startPrice ?? undefined,
+          endPrice: r.endPrice ?? undefined,
+          rawPct: r.rawPct,
+          effectivePct: r.effectivePct,
+          eventBonusPct: r.eventBonusPct,
+          isEventAffected: r.isEventAffected,
+          dollarPnl: r.dollarPnl,
+        })),
+      }).catch(err => console.error('Failed to save round:', err))
+    }
+
     if (currentRound >= TOTAL_ROUNDS) {
+      // Persist game completion
+      if (currentUserId && currentGameId) {
+        const finalValue = currentResult.portfolioValueAfter
+        const totalPnlAll = newHistory.reduce((s, r) => s + r.totalPnl, 0)
+        completeGameMutation({
+          gameId: currentGameId,
+          finalPortfolioValue: finalValue,
+          totalPnl: totalPnlAll,
+        }).catch(err => console.error('Failed to complete game:', err))
+        updateUserStatsMutation({
+          userId: currentUserId,
+          finalPortfolioValue: finalValue,
+          roundsPlayed: newHistory.length,
+        }).catch(err => console.error('Failed to update user stats:', err))
+      }
       setGamePhase('game-over')
     } else {
       setCurrentRound(r => r + 1)
@@ -507,9 +620,8 @@ export default function LandingV2() {
     }
   }
 
-  function handleRestart() {
+  async function handleRestart() {
     setSelected({})
-    setGamePhase('selection')
     setCurrentRound(1)
     setCurrentCsvDate(SESSION_START_DATE)
     setRoundTimeSkips([])
@@ -518,22 +630,41 @@ export default function LandingV2() {
     setCurrentResult(null)
     setPortfolioValue(1000)
     setActiveTab('Stock')
+
+    // Create a new game for the same player (skips profile screen)
+    if (currentUserId) {
+      try {
+        const gameId = await createGameMutation({ userId: currentUserId })
+        setCurrentGameId(gameId)
+      } catch (err) {
+        console.error('Failed to create new game record:', err)
+        setCurrentGameId(null)
+      }
+      setGamePhase('selection')
+    } else {
+      setGamePhase('profile')
+    }
   }
 
-  const isLocking   = gamePhase === 'locking'
+  const isLocking = gamePhase === 'locking'
   const isSelection = gamePhase === 'selection' || gamePhase === 'locking'
 
   // Computed values used in render
-  const roundSkipDays  = roundTimeSkips[currentRound - 1] ?? 30
+  const roundSkipDays = roundTimeSkips[currentRound - 1] ?? 30
   const roundSkipLabel = getTimeSkipLabel(roundSkipDays)
   const currentEventIds = roundEventIds[currentRound - 1] ?? []
   const currentEvents   = currentEventIds.map(id => getEventById(id))
-  // Primary event used for colour / icon theming (first event)
   const currentEvent    = currentEvents[0] ?? null
   const lastResult = roundHistory[roundHistory.length - 1] ?? null
 
   return (
     <div style={{ minHeight: '100vh', background: '#FAF4E8', color: '#2C1810', fontFamily: '"Georgia", serif' }}>
+
+      {/* ?? Profile Phase ??????????????????????????????????????????????????????? */}
+      {gamePhase === 'profile' && (
+        <UserProfileScreen onBegin={handleBeginGame} />
+      )}
+
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Lora:wght@400;500&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -826,9 +957,9 @@ export default function LandingV2() {
             </div>
             <div style={{ display: 'flex', gap: '24px' }}>
               {[
-                { label: 'Time Passed',     value: getTimeSkipLabel(currentResult.timeSkipDays) },
-                { label: 'Round P&L',       value: formatPnl(currentResult.totalPnl) },
-                { label: 'Portfolio Now',   value: `$${currentResult.portfolioValueAfter.toFixed(0)}` },
+                { label: 'Time Passed', value: getTimeSkipLabel(currentResult.timeSkipDays) },
+                { label: 'Round P&L', value: formatPnl(currentResult.totalPnl) },
+                { label: 'Portfolio Now', value: `$${currentResult.portfolioValueAfter.toFixed(0)}` },
               ].map(s => (
                 <div key={s.label} style={{ textAlign: 'center' }}>
                   <div style={{ fontSize: '9px', color: '#A8D5B8', letterSpacing: '1.5px', fontFamily: '"Lora", serif', textTransform: 'uppercase' }}>{s.label}</div>
@@ -871,7 +1002,7 @@ export default function LandingV2() {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {currentResult.assetResults.map((r, i) => {
-                  const meta  = CATEGORY_META[r.animalCategory]
+                  const meta = CATEGORY_META[r.animalCategory]
                   const isPos = r.dollarPnl >= 0
                   return (
                     <div
@@ -906,7 +1037,7 @@ export default function LandingV2() {
                               marginLeft: '6px',
                               fontWeight: 600,
                             }}>
-                              {currentEvent.icon} {r.eventBonusPct >= 0 ? '+' : ''}{(r.eventBonusPct * 100).toFixed(2)}%
+                              {currentEvent?.icon} {r.eventBonusPct >= 0 ? '+' : ''}{(r.eventBonusPct * 100).toFixed(2)}%
                             </span>
                           )}
                         </div>
@@ -1036,6 +1167,14 @@ export default function LandingV2() {
               fontWeight: 900, color: '#FAF4E8',
               textShadow: '0 4px 32px rgba(245,200,66,0.4)',
             }}>The Harvest Is In</div>
+            {userName && (
+              <div style={{
+                fontFamily: '"Lora", serif', fontSize: '16px',
+                color: '#F5C842', marginTop: '8px', fontStyle: 'italic',
+              }}>
+                Well played, {userName}.
+              </div>
+            )}
           </div>
 
           {/* Final portfolio value */}
@@ -1055,6 +1194,7 @@ export default function LandingV2() {
               {formatPnl(portfolioValue - 1000)} from $1,000 start ({formatPct((portfolioValue - 1000) / 1000)})
             </div>
           </div>
+            <StrategyAdvisor portfolio={buildPortfolioItems()} currentValue={portfolioValue} round={currentRound} history={roundHistory} isFinal={true} />
 
           {/* Round-by-round summary */}
           <div className="slide-up" style={{ animationDelay: '0.4s', width: '100%', maxWidth: '640px' }}>
@@ -1108,7 +1248,7 @@ export default function LandingV2() {
             onMouseEnter={e => { e.currentTarget.style.background = '#3A8A63' }}
             onMouseLeave={e => { e.currentTarget.style.background = '#2D6A4F' }}
           >
-            Play Again ? New Season
+            {userName ? `Play Again, ${userName} ?` : 'Play Again ? New Season'}
           </button>
         </div>
       )}
@@ -1140,7 +1280,7 @@ export default function LandingV2() {
               {currentRound === 1 ? (
                 <>
                   <span style={{ fontFamily: '"Playfair Display", serif', fontSize: '22px', fontWeight: 900, color: '#FAF4E8' }}>
-                    Build Your <em style={{ color: '#F5C842' }}>Dream Farm</em>
+                    {userName ? <><em style={{ color: '#F5C842' }}>{userName}</em>'s Farm</> : <>Build Your <em style={{ color: '#F5C842' }}>Dream Farm</em></>}
                   </span>
                   <span style={{ fontFamily: '"Lora", serif', fontSize: '11px', color: '#A8D5B880', letterSpacing: '2px', textTransform: 'uppercase' }}>
                     Season One &middot; The Harvest Begins
@@ -1152,17 +1292,17 @@ export default function LandingV2() {
                     Round <em style={{ color: '#F5C842' }}>{currentRound}</em> of {TOTAL_ROUNDS}
                   </span>
                   <span style={{ fontFamily: '"Lora", serif', fontSize: '11px', color: '#A8D5B880', letterSpacing: '2px', textTransform: 'uppercase' }}>
-                    Adjust Your Farm &middot; Next skip: {roundSkipLabel}
+                    {userName ? `${userName} ? ` : ''}Adjust Your Farm &middot; Next skip: {roundSkipLabel}
                   </span>
                 </>
               )}
             </div>
             <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
               {[
-                { label: 'Budget',    value: `$${budget}` },
-                { label: 'Spent',     value: `$${spent}` },
+                { label: 'Budget', value: `$${budget}` },
+                { label: 'Spent', value: `$${spent}` },
                 { label: 'Remaining', value: `$${budget - spent}` },
-                { label: 'Animals',   value: totalUnits },
+                { label: 'Animals', value: totalUnits },
               ].map(s => (
                 <div key={s.label} style={{ textAlign: 'center' }}>
                   <div style={{ fontSize: '9px', color: '#A8D5B8', letterSpacing: '1.5px', fontFamily: '"Lora", serif', textTransform: 'uppercase' }}>{s.label}</div>
@@ -1294,12 +1434,18 @@ export default function LandingV2() {
                   </div>
                 </div>
                 <span style={{ fontFamily: '"Lora", serif', fontSize: '12px', color: '#C4622D' }}>
-                  {totalUnits} animal{totalUnits !== 1 ? 's' : ''} selected
+                  {totalUnits} asset{totalUnits !== 1 ? 's' : ''} selected
                 </span>
               </div>
 
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px' }}>
-                <FarmCanvas selected={selected} />
+                <AnimatedFarm
+                  selected={selected}
+                  animalNames={Object.fromEntries(LIVESTOCK.map(l => [l.id, l.animalName]))}
+                  animalCats={Object.fromEntries(LIVESTOCK.map(l => [l.id, l.animalCategory]))}
+                  imageMap={IMAGE_MAP}
+                  pixelImageMap={PIXEL_IMAGE_MAP}
+                />
                 <div style={{ marginTop: '12px', fontFamily: '"Lora", serif', fontSize: '11px', color: '#8B6B50', fontStyle: 'italic', textAlign: 'center' }}>
                   Pixel animation will populate based on your portfolio
                 </div>
@@ -1321,6 +1467,7 @@ export default function LandingV2() {
                       )
                     })}
                   </div>
+                    <StrategyAdvisor portfolio={buildPortfolioItems()} currentValue={portfolioValue} round={currentRound} />
                   <button
                     disabled={isLocking || csvLoading}
                     onClick={handleLock}
