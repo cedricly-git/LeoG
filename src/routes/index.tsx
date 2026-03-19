@@ -7,6 +7,7 @@ import { PixelAnimal, PIXEL_SPRITES } from '../components/PixelAnimal'
 import { AnimatedFarm } from '../components/AnimatedFarm'
 import { StrategyAdvisor } from '../components/StrategyAdvisor'
 import { UserProfileScreen } from '../components/UserProfileScreen'
+import { ProfilePanel } from '../components/ProfilePanel'
 import { ASSET_ANIMAL_MAP, type AnimalCategory } from '../data/assetAnimalMapping'
 import { loadAllCsvData, type CsvDataMap, type MultiplierMap } from '../lib/csvLoader'
 import {
@@ -196,6 +197,49 @@ const LIVESTOCK_TYPED = LIVESTOCK.map(a => ({
 
 const ASSET_TYPE_ORDER: AssetType[] = ['Stock', 'Bond', 'ETF', 'Crypto', 'Hedge']
 
+// Animal group tabs (shown before financial info is unlocked)
+type AnimalGroupTab = 'livestock' | 'harvest' | 'specialty'
+
+const ANIMAL_GROUP_META: Record<AnimalGroupTab, {
+  emoji: string; label: string; color: string; categories: AnimalCategory[]
+}> = {
+  livestock: { emoji: '\u{1F404}', label: 'Livestock', color: '#8B4513', categories: ['Pig', 'Guard Dog', 'Horse', 'Bovine'] },
+  harvest:   { emoji: '\u{1F33E}', label: 'Harvest',   color: '#2D6A4F', categories: ['Medicinal Plant', 'Grain Crop'] },
+  specialty: { emoji: '\u{1F3E1}', label: 'Specialty', color: '#475569', categories: ['Collective', 'Tool', 'Hedge'] },
+}
+const ANIMAL_GROUP_ORDER: AnimalGroupTab[] = ['livestock', 'harvest', 'specialty']
+
+const ANIMAL_SUBGROUPS: Record<AnimalGroupTab, Array<{ category: AnimalCategory; emoji: string; label: string; color: string }>> = {
+  livestock: [
+    { category: 'Pig',       emoji: '\u{1F437}', label: 'Swine',        color: '#A0522D' },
+    { category: 'Guard Dog', emoji: '\u{1F415}', label: 'Working Dogs', color: '#795548' },
+    { category: 'Horse',     emoji: '\u{1F434}', label: 'Horses',       color: '#6D4C41' },
+    { category: 'Bovine',    emoji: '\u{1F404}', label: 'Bovine',       color: '#558B2F' },
+  ],
+  harvest: [
+    { category: 'Medicinal Plant', emoji: '\u{1F33F}', label: 'Medicinal Plants', color: '#388E3C' },
+    { category: 'Grain Crop',      emoji: '\u{1F33E}', label: 'Grain Crops',      color: '#B8860B' },
+  ],
+  specialty: [
+    { category: 'Collective', emoji: '\u{1F3E1}', label: 'Collective', color: '#546E7A' },
+    { category: 'Tool',       emoji: '\u26CF\uFE0F', label: 'Tools',   color: '#4E342E' },
+    { category: 'Hedge',      emoji: '\u{1FAB4}', label: 'Hedge',      color: '#43A047' },
+  ],
+}
+
+// Badge labels / colors for locked mode (animal-themed, not financial)
+const LOCKED_BADGE_META: Record<AnimalCategory, { badge: string; color: string }> = {
+  'Pig':             { badge: 'SWINE',       color: '#A0522D' },
+  'Guard Dog':       { badge: 'WORKING DOG', color: '#795548' },
+  'Horse':           { badge: 'EQUINE',      color: '#6D4C41' },
+  'Medicinal Plant': { badge: 'MEDICINAL',   color: '#388E3C' },
+  'Grain Crop':      { badge: 'GRAIN',       color: '#B8860B' },
+  'Bovine':          { badge: 'BOVINE',      color: '#558B2F' },
+  'Collective':      { badge: 'COLLECTIVE',  color: '#546E7A' },
+  'Tool':            { badge: 'TOOLS',       color: '#4E342E' },
+  'Hedge':           { badge: 'HEDGE',       color: '#43A047' },
+}
+
 // ?? Stock sub-groups ?????????????????????????????????????????????????????????
 const STOCK_SUBGROUPS = [
   { sector: 'Finance', emoji: '\u{1F437}', label: 'Finance', color: '#1D5FA0' },
@@ -222,7 +266,7 @@ function RiskDots({ level }: { level: number }) {
 type LivestockItem = typeof LIVESTOCK_TYPED[number]
 
 function AnimalCard({
-  animal, idx, selected, expanded, onAdjust, onExpand,
+  animal, idx, selected, expanded, onAdjust, onExpand, financialUnlocked = true,
 }: {
   animal: LivestockItem
   idx: number
@@ -230,6 +274,7 @@ function AnimalCard({
   expanded: string | null
   onAdjust: (id: string, delta: number) => void
   onExpand: (id: string) => void
+  financialUnlocked?: boolean
 }) {
   const count = selected[animal.id] ?? 0
   const isExpanded = expanded === animal.id
@@ -273,20 +318,32 @@ function AnimalCard({
               fontFamily: '"Playfair Display", serif',
               fontSize: '15px', fontWeight: 700, color: '#2C1810',
             }}>{animal.animalName}</span>
-            <span style={{
-              fontSize: '9px', padding: '2px 6px', borderRadius: '2px',
-              background: `${animal.badgeColor}15`, color: animal.badgeColor,
-              letterSpacing: '1px', fontFamily: '"Lora", serif',
-              border: `1px solid ${animal.badgeColor}30`, whiteSpace: 'nowrap',
-            }}>{animal.badge}</span>
+            {(() => {
+              const bLabel = financialUnlocked ? animal.badge : LOCKED_BADGE_META[animal.animalCategory].badge
+              const bColor = financialUnlocked ? animal.badgeColor : LOCKED_BADGE_META[animal.animalCategory].color
+              return (
+                <span style={{
+                  fontSize: '9px', padding: '2px 6px', borderRadius: '2px',
+                  background: `${bColor}15`, color: bColor,
+                  letterSpacing: '1px', fontFamily: '"Lora", serif',
+                  border: `1px solid ${bColor}30`, whiteSpace: 'nowrap',
+                }}>{bLabel}</span>
+              )
+            })()}
           </div>
-          <div style={{
-            fontFamily: '"Lora", serif', fontSize: '11px', color: '#8B6B50',
-            display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap',
-          }}>
-            {animal.animalCategory !== 'Hedge' && <span>{animal.assetName}</span>}
-            <span>{animal.returnProfile}</span>
-          </div>
+          {financialUnlocked ? (
+            <div style={{
+              fontFamily: '"Lora", serif', fontSize: '11px', color: '#8B6B50',
+              display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap',
+            }}>
+              {animal.animalCategory !== 'Hedge' && <span>{animal.assetName}</span>}
+              <span>{animal.returnProfile}</span>
+            </div>
+          ) : (
+            <div style={{ fontFamily: '"Lora", serif', fontSize: '11px', color: '#B89070', fontStyle: 'italic' }}>
+              Seasonal breed ? farm performance
+            </div>
+          )}
           <div style={{ marginTop: '4px', display: 'flex', gap: '6px', alignItems: 'center' }}>
             <span style={{ fontSize: '10px', color: '#B89070', fontFamily: '"Lora", serif' }}>Risk:</span>
             <RiskDots level={animal.risk} />
@@ -325,10 +382,20 @@ function AnimalCard({
           fontFamily: '"Lora", serif', fontSize: '12px',
           color: '#6B4E37', lineHeight: 1.7, fontStyle: 'italic',
         }}>
-          <strong style={{ fontStyle: 'normal' }}>{animal.animalName}</strong> represents{' '}
-          <strong style={{ fontStyle: 'normal' }}>{animal.assetName}</strong> ? a{' '}
-          {animal.sectorLabel.toLowerCase()} asset. Its performance in the game mirrors
-          real historical price data from the markets.
+          {financialUnlocked ? (
+            <>
+              <strong style={{ fontStyle: 'normal' }}>{animal.animalName}</strong> represents{' '}
+              <strong style={{ fontStyle: 'normal' }}>{animal.assetName}</strong>, a{' '}
+              {animal.sectorLabel.toLowerCase()} asset. Its performance in the game mirrors
+              real historical price data from the markets.
+            </>
+          ) : (
+            <>
+              <strong style={{ fontStyle: 'normal' }}>{animal.animalName}</strong> is a prized
+              breed on the farm. Its growth is shaped by world events and seasonal forces ?
+              build your herd wisely and diversity will see you through any storm.
+            </>
+          )}
         </div>
       )}
     </div>
@@ -413,6 +480,11 @@ export default function LandingV2() {
   const [userName, setUserName]             = useState('')
   const [currentUserId, setCurrentUserId]   = useState<Id<'users'> | null>(null)
   const [currentGameId, setCurrentGameId]   = useState<Id<'games'> | null>(null)
+  const [profilePanelOpen, setProfilePanelOpen] = useState(false)
+  const [financialUnlocked, setFinancialUnlocked] = useState(
+    () => localStorage.getItem('leog_finance_unlocked') === '1'
+  )
+  const [activeAnimalTab, setActiveAnimalTab] = useState<AnimalGroupTab>('livestock')
 
   // Convex mutations
   const createGameMutation     = useMutation(api.games.createGame)
@@ -644,6 +716,11 @@ export default function LandingV2() {
     } else {
       setGamePhase('profile')
     }
+  }
+
+  function handleUnlock() {
+    localStorage.setItem('leog_finance_unlocked', '1')
+    setFinancialUnlocked(true)
   }
 
   const isLocking = gamePhase === 'locking'
@@ -1232,24 +1309,42 @@ export default function LandingV2() {
             </div>
           </div>
 
-          <button
-            className="slide-up"
-            onClick={handleRestart}
-            style={{
-              animationDelay: '0.6s',
-              padding: '18px 48px',
-              background: '#2D6A4F', color: '#FAF4E8',
-              border: 'none', borderRadius: '4px', cursor: 'pointer',
-              fontFamily: '"Playfair Display", serif', fontSize: '18px',
-              fontWeight: 700, letterSpacing: '1px',
-              boxShadow: '0 4px 24px rgba(45,106,79,0.4)',
-              transition: 'background 0.2s',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#3A8A63' }}
-            onMouseLeave={e => { e.currentTarget.style.background = '#2D6A4F' }}
-          >
-            {userName ? `Play Again, ${userName} ?` : 'Play Again ? New Season'}
-          </button>
+          <div className="slide-up" style={{ animationDelay: '0.6s', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
+            {currentUserId && (
+              <button
+                onClick={() => setProfilePanelOpen(true)}
+                style={{
+                  padding: '18px 28px',
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  borderRadius: '4px', cursor: 'pointer',
+                  fontFamily: '"Playfair Display", serif', fontSize: '16px',
+                  fontWeight: 700, letterSpacing: '1px', color: '#FAF4E8',
+                  transition: 'background 0.2s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}
+              >
+                View My Profile
+              </button>
+            )}
+            <button
+              onClick={handleRestart}
+              style={{
+                padding: '18px 48px',
+                background: '#2D6A4F', color: '#FAF4E8',
+                border: 'none', borderRadius: '4px', cursor: 'pointer',
+                fontFamily: '"Playfair Display", serif', fontSize: '18px',
+                fontWeight: 700, letterSpacing: '1px',
+                boxShadow: '0 4px 24px rgba(45,106,79,0.4)',
+                transition: 'background 0.2s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#3A8A63' }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#2D6A4F' }}
+            >
+              {userName ? `Play Again, ${userName} ?` : 'Play Again ? New Season'}
+            </button>
+          </div>
         </div>
       )}
 
@@ -1309,6 +1404,27 @@ export default function LandingV2() {
                   <div style={{ fontFamily: '"Playfair Display", serif', fontSize: '16px', color: '#FAF4E8', fontWeight: 700, lineHeight: 1.2 }}>{s.value}</div>
                 </div>
               ))}
+              {currentUserId && (
+                <button
+                  onClick={() => setProfilePanelOpen(true)}
+                  title="View your profile"
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '6px',
+                    padding: '6px 14px',
+                    background: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: '6px',
+                    color: '#FAF4E8',
+                    fontFamily: '"Lora", serif', fontSize: '12px',
+                    cursor: 'pointer', transition: 'background 0.15s',
+                    flexShrink: 0,
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.2)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)' }}
+                >
+                  Profile
+                </button>
+              )}
             </div>
           </div>
 
@@ -1346,35 +1462,69 @@ export default function LandingV2() {
                   Choose Your Livestock
                 </div>
                 <div style={{ display: 'flex', borderBottom: '2px solid #E8D9C8' }}>
-                  {ASSET_TYPE_ORDER.map(type => {
-                    const m = ASSET_TYPE_META[type]
-                    const isActive = activeTab === type
-                    const cnt = tabSelectedCount(type)
-                    return (
-                      <button
-                        key={type}
-                        onClick={() => setActiveTab(type)}
-                        style={{
-                          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
-                          padding: '9px 4px', border: 'none', background: 'transparent',
-                          cursor: 'pointer', fontFamily: '"Lora", serif',
-                          fontSize: '12px', fontWeight: isActive ? 600 : 400,
-                          color: isActive ? m.color : '#8B6B50',
-                          borderBottom: `2px solid ${isActive ? m.color : 'transparent'}`,
-                          marginBottom: '-2px', transition: 'all 0.18s', whiteSpace: 'nowrap',
-                        }}
-                      >
-                        <span>{m.emoji}</span>
-                        {m.label}
-                        {cnt > 0 && (
-                          <span style={{
-                            background: m.color, color: '#fff', borderRadius: '10px',
-                            fontSize: '9px', padding: '1px 5px', fontWeight: 700, lineHeight: 1.5,
-                          }}>{cnt}</span>
-                        )}
-                      </button>
-                    )
-                  })}
+                  {financialUnlocked ? (
+                    ASSET_TYPE_ORDER.map(type => {
+                      const m = ASSET_TYPE_META[type]
+                      const isActive = activeTab === type
+                      const cnt = tabSelectedCount(type)
+                      return (
+                        <button
+                          key={type}
+                          onClick={() => setActiveTab(type)}
+                          style={{
+                            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
+                            padding: '9px 4px', border: 'none', background: 'transparent',
+                            cursor: 'pointer', fontFamily: '"Lora", serif',
+                            fontSize: '12px', fontWeight: isActive ? 600 : 400,
+                            color: isActive ? m.color : '#8B6B50',
+                            borderBottom: `2px solid ${isActive ? m.color : 'transparent'}`,
+                            marginBottom: '-2px', transition: 'all 0.18s', whiteSpace: 'nowrap',
+                          }}
+                        >
+                          <span>{m.emoji}</span>
+                          {m.label}
+                          {cnt > 0 && (
+                            <span style={{
+                              background: m.color, color: '#fff', borderRadius: '10px',
+                              fontSize: '9px', padding: '1px 5px', fontWeight: 700, lineHeight: 1.5,
+                            }}>{cnt}</span>
+                          )}
+                        </button>
+                      )
+                    })
+                  ) : (
+                    ANIMAL_GROUP_ORDER.map(tab => {
+                      const m = ANIMAL_GROUP_META[tab]
+                      const isActive = activeAnimalTab === tab
+                      const cnt = LIVESTOCK_TYPED
+                        .filter(a => (m.categories as string[]).includes(a.animalCategory) && (selected[a.id] ?? 0) > 0)
+                        .length
+                      return (
+                        <button
+                          key={tab}
+                          onClick={() => setActiveAnimalTab(tab)}
+                          style={{
+                            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
+                            padding: '9px 4px', border: 'none', background: 'transparent',
+                            cursor: 'pointer', fontFamily: '"Lora", serif',
+                            fontSize: '12px', fontWeight: isActive ? 600 : 400,
+                            color: isActive ? m.color : '#8B6B50',
+                            borderBottom: `2px solid ${isActive ? m.color : 'transparent'}`,
+                            marginBottom: '-2px', transition: 'all 0.18s', whiteSpace: 'nowrap',
+                          }}
+                        >
+                          <span>{m.emoji}</span>
+                          {m.label}
+                          {cnt > 0 && (
+                            <span style={{
+                              background: m.color, color: '#fff', borderRadius: '10px',
+                              fontSize: '9px', padding: '1px 5px', fontWeight: 700, lineHeight: 1.5,
+                            }}>{cnt}</span>
+                          )}
+                        </button>
+                      )
+                    })
+                  )}
                 </div>
               </div>
 
@@ -1386,11 +1536,47 @@ export default function LandingV2() {
                   animationDelay: isLocking ? '0.05s' : undefined,
                 }}
               >
-                {activeTab === 'Stock' ? (
-                  STOCK_SUBGROUPS.map(sub => {
-                    const subItems = LIVESTOCK_TYPED.filter(a => a.assetType === 'Stock' && a.sector === sub.sector)
+                {financialUnlocked ? (
+                  activeTab === 'Stock' ? (
+                    STOCK_SUBGROUPS.map(sub => {
+                      const subItems = LIVESTOCK_TYPED.filter(a => a.assetType === 'Stock' && a.sector === sub.sector)
+                      return (
+                        <div key={sub.sector} style={{ marginBottom: '28px' }}>
+                          <div style={{
+                            display: 'flex', alignItems: 'center', gap: '6px',
+                            marginBottom: '10px', paddingBottom: '6px',
+                            borderBottom: `1.5px solid ${sub.color}28`,
+                          }}>
+                            <span style={{ fontSize: '14px' }}>{sub.emoji}</span>
+                            <span style={{ fontFamily: '"Lora", serif', fontSize: '11px', fontWeight: 600, color: sub.color, letterSpacing: '1.5px', textTransform: 'uppercase' }}>{sub.label}</span>
+                            <span style={{ fontFamily: '"Lora", serif', fontSize: '10px', color: '#B89070', marginLeft: '2px' }}>&middot; {subItems.length} assets</span>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            {subItems.map((animal, idx) => (
+                              <AnimalCard key={animal.id} animal={animal} idx={idx}
+                                selected={selected} expanded={expanded}
+                                onAdjust={adjust} onExpand={toggleExpand}
+                                financialUnlocked={true} />
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    })
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {tabItems(activeTab).map((animal, idx) => (
+                        <AnimalCard key={animal.id} animal={animal} idx={idx}
+                          selected={selected} expanded={expanded}
+                          onAdjust={adjust} onExpand={toggleExpand}
+                          financialUnlocked={true} />
+                      ))}
+                    </div>
+                  )
+                ) : (
+                  ANIMAL_SUBGROUPS[activeAnimalTab].map(sub => {
+                    const subItems = LIVESTOCK_TYPED.filter(a => a.animalCategory === sub.category)
                     return (
-                      <div key={sub.sector} style={{ marginBottom: '28px' }}>
+                      <div key={sub.category} style={{ marginBottom: '28px' }}>
                         <div style={{
                           display: 'flex', alignItems: 'center', gap: '6px',
                           marginBottom: '10px', paddingBottom: '6px',
@@ -1398,26 +1584,19 @@ export default function LandingV2() {
                         }}>
                           <span style={{ fontSize: '14px' }}>{sub.emoji}</span>
                           <span style={{ fontFamily: '"Lora", serif', fontSize: '11px', fontWeight: 600, color: sub.color, letterSpacing: '1.5px', textTransform: 'uppercase' }}>{sub.label}</span>
-                          <span style={{ fontFamily: '"Lora", serif', fontSize: '10px', color: '#B89070', marginLeft: '2px' }}>&middot; {subItems.length} assets</span>
+                          <span style={{ fontFamily: '"Lora", serif', fontSize: '10px', color: '#B89070', marginLeft: '2px' }}>&middot; {subItems.length} breeds</span>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                           {subItems.map((animal, idx) => (
                             <AnimalCard key={animal.id} animal={animal} idx={idx}
                               selected={selected} expanded={expanded}
-                              onAdjust={adjust} onExpand={toggleExpand} />
+                              onAdjust={adjust} onExpand={toggleExpand}
+                              financialUnlocked={false} />
                           ))}
                         </div>
                       </div>
                     )
                   })
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {tabItems(activeTab).map((animal, idx) => (
-                      <AnimalCard key={animal.id} animal={animal} idx={idx}
-                        selected={selected} expanded={expanded}
-                        onAdjust={adjust} onExpand={toggleExpand} />
-                    ))}
-                  </div>
                 )}
               </div>
             </div>
@@ -1485,10 +1664,10 @@ export default function LandingV2() {
                     onMouseLeave={e => { if (!isLocking && !csvLoading) e.currentTarget.style.background = '#2D6A4F' }}
                   >
                     {csvLoading
-                      ? 'Loading market data?'
+                      ? 'Loading market data...'
                       : isLocking
-                        ? 'Locking?'
-                        : `Lock Portfolio & Begin Round ${currentRound} ?`}
+                        ? 'Locking...'
+                        : `Lock Portfolio & Begin Round ${currentRound}`}
                   </button>
                 </div>
               )}
@@ -1498,6 +1677,17 @@ export default function LandingV2() {
           {/* Locking overlay rendered on top */}
           {isLocking && <LockOverlay phase={gamePhase} round={currentRound} />}
         </>
+      )}
+
+      {/* Profile panel ? available on any phase once user is identified */}
+      {profilePanelOpen && currentUserId && (
+        <ProfilePanel
+          userId={currentUserId}
+          userName={userName}
+          financialUnlocked={financialUnlocked}
+          onUnlock={handleUnlock}
+          onClose={() => setProfilePanelOpen(false)}
+        />
       )}
     </div>
   )

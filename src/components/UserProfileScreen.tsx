@@ -112,7 +112,7 @@ export function UserProfileScreen({ onBegin }: UserProfileScreenProps) {
   const loading = storedUserId !== null && existingUser === undefined
 
   const formatValue = (v: number) =>
-    v >= 1000 ? `$${v.toLocaleString('en-US', { maximumFractionDigits: 0 })}` : `$${v}`
+    `$${v.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
 
   return (
     <div style={{

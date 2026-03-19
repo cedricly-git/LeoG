@@ -38,6 +38,56 @@ export const completeGame = mutation({
   },
 })
 
+export const deleteGame = mutation({
+  args: { gameId: v.id('games') },
+  returns: v.null(),
+  handler: async (ctx, { gameId }) => {
+    const game = await ctx.db.get(gameId)
+    if (!game) throw new Error('Game not found')
+
+    // Delete all rounds belonging to this game
+    const rounds = await ctx.db
+      .query('rounds')
+      .withIndex('by_game', q => q.eq('gameId', gameId))
+      .collect()
+    for (const round of rounds) {
+      await ctx.db.delete(round._id)
+    }
+
+    // Update user stats if the game was complete
+    if (game.status === 'complete') {
+      const user = await ctx.db.get(game.userId)
+      if (user) {
+        const newGamesPlayed = Math.max(0, user.gamesPlayed - 1)
+        const newRoundsPlayed = Math.max(0, user.totalRoundsPlayed - rounds.length)
+
+        // Recalculate best portfolio value from remaining games
+        const remainingGames = await ctx.db
+          .query('games')
+          .withIndex('by_user', q => q.eq('userId', game.userId))
+          .filter(q => q.and(
+            q.neq(q.field('_id'), gameId),
+            q.eq(q.field('status'), 'complete'),
+          ))
+          .collect()
+        const newBest = remainingGames.reduce(
+          (best, g) => Math.max(best, g.finalPortfolioValue ?? 0),
+          0
+        )
+
+        await ctx.db.patch(game.userId, {
+          gamesPlayed: newGamesPlayed,
+          totalRoundsPlayed: newRoundsPlayed,
+          bestPortfolioValue: newBest,
+        })
+      }
+    }
+
+    await ctx.db.delete(gameId)
+    return null
+  },
+})
+
 export const getUserGames = query({
   args: { userId: v.id('users') },
   returns: v.array(v.object({
