@@ -5,7 +5,7 @@ import { ASSET_ANIMAL_MAP, type AnimalCategory } from '../data/assetAnimalMappin
 import { loadAllCsvData, type CsvDataMap, type MultiplierMap } from '../lib/csvLoader'
 import {
   SESSION_START_DATE, TOTAL_ROUNDS, UNIT_COST,
-  rollTimeSkips, rollEventIndices,
+  rollTimeSkips, pickEventsForRound,
   advanceDate, getTimeSkipLabel,
   calculateRoundPnl,
   formatPnl, formatPct, formatMonthYear,
@@ -379,13 +379,14 @@ export default function LandingV2() {
   const [currentRound, setCurrentRound]       = useState(1)
   const [currentCsvDate, setCurrentCsvDate]   = useState<Date>(SESSION_START_DATE)
   const [roundTimeSkips, setRoundTimeSkips]   = useState<number[]>([])
-  const [roundEventIds, setRoundEventIds]     = useState<number[]>([])
+  // Each round stores a pair of event IDs: number[][]
+  const [roundEventIds, setRoundEventIds]     = useState<number[][]>([])
   const [roundHistory, setRoundHistory]       = useState<RoundResult[]>([])
   const [currentResult, setCurrentResult]     = useState<RoundResult | null>(null)
   const [portfolioValue, setPortfolioValue]   = useState(1000)
 
-  // Round-active animation step: 'time-skip' ? 'event'
-  const [activeStep, setActiveStep] = useState<'time-skip' | 'event'>('time-skip')
+  // Round-active animation step: 'time-skip' ? 'event-1' ? 'event-2'
+  const [activeStep, setActiveStep] = useState<'time-skip' | 'event-1' | 'event-2'>('time-skip')
 
   // Budget: $1000 for round 1, then carry-over value (floored to nearest unit cost)
   const budget     = currentRound === 1 ? 1000 : Math.floor(portfolioValue / UNIT_COST) * UNIT_COST
@@ -440,41 +441,49 @@ export default function LandingV2() {
   }
 
   function handleLock() {
-    // Pre-roll all 7 time skips and event dice on the very first lock
-    let skips  = roundTimeSkips
-    let events = roundEventIds
+    // Pre-roll all 7 time skips on the very first lock
     if (currentRound === 1) {
-      skips  = rollTimeSkips()
-      events = rollEventIndices()
-      setRoundTimeSkips(skips)
-      setRoundEventIds(events)
+      setRoundTimeSkips(rollTimeSkips())
     }
+    // Pick 2 events relevant to THIS round's selections (done every round)
+    const selectedAnimalNames = buildPortfolioItems().map(p => p.animalName)
+    const eventPair = pickEventsForRound(selectedAnimalNames, 2)
+    setRoundEventIds(prev => {
+      const updated = [...prev]
+      updated[currentRound - 1] = eventPair
+      return updated
+    })
     setActiveStep('time-skip')
     setGamePhase('locking')
-    // After locking overlay, move to round-active
     setTimeout(() => setGamePhase('round-active'), 1800)
   }
 
-  // Sequence the round-active animation steps
+  // Sequence the round-active animation steps: time-skip ? event-1
   useEffect(() => {
     if (gamePhase !== 'round-active') return
     setActiveStep('time-skip')
-    const t1 = setTimeout(() => setActiveStep('event'), 2000)
+    const t1 = setTimeout(() => setActiveStep('event-1'), 2000)
     return () => { clearTimeout(t1) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gamePhase])
 
+  /** Advance from event-1 card to event-2 card */
+  function handleNextEvent() {
+    setActiveStep('event-2')
+  }
+
+  /** Calculate P&L from both events and move to recap */
   function handleEventContinue() {
     if (!csvData) { setGamePhase('round-recap'); return }
     const roundIdx  = currentRound - 1
     const skipDays  = roundTimeSkips[roundIdx] ?? 30
-    const eventId   = roundEventIds[roundIdx]  ?? 1
+    const eventIds  = roundEventIds[roundIdx]  ?? []
     const startDate = currentCsvDate
     const endDate   = advanceDate(currentCsvDate, skipDays)
     const portfolio = buildPortfolioItems()
-    const event     = getEventById(eventId)
+    const events    = eventIds.map(id => getEventById(id))
     const result    = calculateRoundPnl(
-      currentRound, event, portfolio,
+      currentRound, events, portfolio,
       startDate, endDate, skipDays,
       csvData, multiplierMap, portfolioValue,
     )
@@ -517,9 +526,10 @@ export default function LandingV2() {
   // Computed values used in render
   const roundSkipDays  = roundTimeSkips[currentRound - 1] ?? 30
   const roundSkipLabel = getTimeSkipLabel(roundSkipDays)
-  const currentEvent   = roundEventIds[currentRound - 1]
-    ? getEventById(roundEventIds[currentRound - 1])
-    : null
+  const currentEventIds = roundEventIds[currentRound - 1] ?? []
+  const currentEvents   = currentEventIds.map(id => getEventById(id))
+  // Primary event used for colour / icon theming (first event)
+  const currentEvent    = currentEvents[0] ?? null
   const lastResult = roundHistory[roundHistory.length - 1] ?? null
 
   return (
@@ -679,7 +689,7 @@ export default function LandingV2() {
                     ? <span className="dice-flicker">Rolling?</span>
                     : roundSkipLabel}
                 </div>
-                {activeStep === 'event' && (
+                {(activeStep === 'event-1' || activeStep === 'event-2') && (
                   <div className="fade-in" style={{
                     fontFamily: '"Lora", serif', fontSize: '12px',
                     color: '#A8D5B8', marginTop: '4px',
@@ -691,109 +701,111 @@ export default function LandingV2() {
             </div>
           </div>
 
-          {/* Event reveal */}
-          {activeStep === 'event' && (
-            <div className="slide-up" style={{ animationDelay: '0s', textAlign: 'center', maxWidth: '560px', width: '100%' }}>
-              {/* Header label */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '16px' }}>
-                <div style={{
-                  fontFamily: '"Lora", serif', fontSize: '10px',
-                  color: '#A8D5B870', letterSpacing: '3px', textTransform: 'uppercase',
-                }}>Unexpected Event</div>
-                <div style={{
-                  background: currentEvent.isPositive ? 'rgba(74,222,128,0.15)' : 'rgba(248,113,113,0.15)',
-                  border: `1px solid ${currentEvent.isPositive ? 'rgba(74,222,128,0.4)' : 'rgba(248,113,113,0.4)'}`,
-                  borderRadius: '4px', padding: '2px 10px',
-                  fontFamily: '"Lora", serif', fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase',
-                  color: currentEvent.isPositive ? '#4ade80' : '#f87171', fontWeight: 600,
-                }}>{currentEvent.isPositive ? '? Positive' : '? Negative'}</div>
-              </div>
-
-              {/* Main card */}
-              <div style={{
-                background: `${currentEvent.color}12`,
-                border: `1.5px solid ${currentEvent.color}50`,
-                borderRadius: '10px', padding: '28px 32px',
-                boxShadow: `0 8px 48px ${currentEvent.color}25`,
-                textAlign: 'left',
-              }}>
-                {/* Icon + title row */}
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', marginBottom: '16px' }}>
-                  <div style={{ fontSize: '38px', lineHeight: 1, flexShrink: 0 }}>{currentEvent.icon}</div>
-                  <div>
-                    <div style={{
-                      fontFamily: '"Playfair Display", serif', fontSize: '20px',
-                      fontWeight: 700, color: '#FAF4E8', lineHeight: 1.25, marginBottom: '6px',
-                    }}>{currentEvent.title}</div>
-                    <div style={{
-                      display: 'inline-block',
-                      background: `${currentEvent.color}20`, border: `1px solid ${currentEvent.color}40`,
-                      borderRadius: '4px', padding: '2px 10px',
-                      fontFamily: '"Lora", serif', fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase',
-                      color: `${currentEvent.color}DD`,
-                    }}>{currentEvent.impactLabel}</div>
-                  </div>
-                </div>
-
-                {/* Divider */}
-                <div style={{ height: '1px', background: `${currentEvent.color}25`, marginBottom: '16px' }} />
-
-                {/* Description */}
-                <div style={{
-                  fontFamily: '"Lora", serif', fontSize: '14px',
-                  color: '#D4C9B4', lineHeight: 1.8,
-                }}>{currentEvent.description}</div>
-
-                {/* Affected assets */}
-                <div style={{ marginTop: '20px' }}>
+          {/* Event reveal ? step 1 or step 2 */}
+          {(activeStep === 'event-1' || activeStep === 'event-2') && (() => {
+            const evIdx  = activeStep === 'event-1' ? 0 : 1
+            const ev     = currentEvents[evIdx]
+            const isLast = activeStep === 'event-2'
+            if (!ev) return null
+            return (
+              <div key={activeStep} className="slide-up" style={{ animationDelay: '0s', textAlign: 'center', maxWidth: '560px', width: '100%' }}>
+                {/* Step indicator + sentiment badge */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '16px' }}>
                   <div style={{
                     fontFamily: '"Lora", serif', fontSize: '10px',
-                    color: '#A8D5B860', letterSpacing: '2px', textTransform: 'uppercase',
-                    marginBottom: '8px',
-                  }}>Assets Affected</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    {currentEvent.affectedAnimalNames.map(name => (
-                      <span key={name} style={{
-                        background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
-                        borderRadius: '4px', padding: '3px 10px',
-                        fontFamily: '"Lora", serif', fontSize: '11px', color: '#A8D5B8CC',
-                      }}>{name}</span>
-                    ))}
+                    color: '#A8D5B870', letterSpacing: '3px', textTransform: 'uppercase',
+                  }}>Event {evIdx + 1} of 2</div>
+                  <div style={{
+                    background: ev.isPositive ? 'rgba(74,222,128,0.15)' : 'rgba(248,113,113,0.15)',
+                    border: `1px solid ${ev.isPositive ? 'rgba(74,222,128,0.4)' : 'rgba(248,113,113,0.4)'}`,
+                    borderRadius: '4px', padding: '2px 10px',
+                    fontFamily: '"Lora", serif', fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase',
+                    color: ev.isPositive ? '#4ade80' : '#f87171', fontWeight: 600,
+                  }}>{ev.isPositive ? '? Positive' : '? Negative'}</div>
+                </div>
+
+                {/* Main card */}
+                <div style={{
+                  background: `${ev.color}12`,
+                  border: `1.5px solid ${ev.color}50`,
+                  borderRadius: '10px', padding: '28px 32px',
+                  boxShadow: `0 8px 48px ${ev.color}25`,
+                  textAlign: 'left',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', marginBottom: '16px' }}>
+                    <div style={{ fontSize: '38px', lineHeight: 1, flexShrink: 0 }}>{ev.icon}</div>
+                    <div>
+                      <div style={{
+                        fontFamily: '"Playfair Display", serif', fontSize: '20px',
+                        fontWeight: 700, color: '#FAF4E8', lineHeight: 1.25, marginBottom: '6px',
+                      }}>{ev.title}</div>
+                      <div style={{
+                        display: 'inline-block',
+                        background: `${ev.color}20`, border: `1px solid ${ev.color}40`,
+                        borderRadius: '4px', padding: '2px 10px',
+                        fontFamily: '"Lora", serif', fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase',
+                        color: `${ev.color}DD`,
+                      }}>{ev.impactLabel}</div>
+                    </div>
+                  </div>
+
+                  <div style={{ height: '1px', background: `${ev.color}25`, marginBottom: '16px' }} />
+
+                  <div style={{
+                    fontFamily: '"Lora", serif', fontSize: '14px',
+                    color: '#D4C9B4', lineHeight: 1.8,
+                  }}>{ev.description}</div>
+
+                  <div style={{ marginTop: '20px' }}>
+                    <div style={{
+                      fontFamily: '"Lora", serif', fontSize: '10px',
+                      color: '#A8D5B860', letterSpacing: '2px', textTransform: 'uppercase',
+                      marginBottom: '8px',
+                    }}>Assets Affected</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {ev.affectedAnimalNames.map(name => (
+                        <span key={name} style={{
+                          background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
+                          borderRadius: '4px', padding: '3px 10px',
+                          fontFamily: '"Lora", serif', fontSize: '11px', color: '#A8D5B8CC',
+                        }}>{name}</span>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Continue button */}
-              <div className="fade-in" style={{ marginTop: '28px', animationDelay: '0.4s' }}>
-                <button
-                  onClick={handleEventContinue}
-                  style={{
-                    background: currentEvent.isPositive
-                      ? 'linear-gradient(135deg, #2D6A4F, #1a4a35)'
-                      : 'linear-gradient(135deg, #7C2D12, #4a1508)',
-                    border: `1.5px solid ${currentEvent.isPositive ? 'rgba(74,222,128,0.4)' : 'rgba(248,113,113,0.4)'}`,
-                    borderRadius: '6px', padding: '14px 40px',
-                    fontFamily: '"Lora", serif', fontSize: '13px', letterSpacing: '2px',
-                    textTransform: 'uppercase', color: '#FAF4E8', cursor: 'pointer',
-                    fontWeight: 600, transition: 'all 0.2s',
-                  }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLButtonElement).style.opacity = '0.9' }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLButtonElement).style.opacity = '1' }}
-                >
-                  See Results ?
-                </button>
-                <div style={{
-                  marginTop: '10px', fontFamily: '"Lora", serif', fontSize: '10px',
-                  color: '#A8D5B840', letterSpacing: '1px',
-                }}>Take your time ? press when ready</div>
+                {/* Action button */}
+                <div className="fade-in" style={{ marginTop: '28px', animationDelay: '0.4s' }}>
+                  <button
+                    onClick={isLast ? handleEventContinue : handleNextEvent}
+                    style={{
+                      background: ev.isPositive
+                        ? 'linear-gradient(135deg, #2D6A4F, #1a4a35)'
+                        : 'linear-gradient(135deg, #7C2D12, #4a1508)',
+                      border: `1.5px solid ${ev.isPositive ? 'rgba(74,222,128,0.4)' : 'rgba(248,113,113,0.4)'}`,
+                      borderRadius: '6px', padding: '14px 40px',
+                      fontFamily: '"Lora", serif', fontSize: '13px', letterSpacing: '2px',
+                      textTransform: 'uppercase', color: '#FAF4E8', cursor: 'pointer',
+                      fontWeight: 600, transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLButtonElement).style.opacity = '0.9' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLButtonElement).style.opacity = '1' }}
+                  >
+                    {isLast ? 'See Results ?' : 'Next Event ?'}
+                  </button>
+                  <div style={{
+                    marginTop: '10px', fontFamily: '"Lora", serif', fontSize: '10px',
+                    color: '#A8D5B840', letterSpacing: '1px',
+                  }}>{isLast ? 'Take your time ? press when ready' : 'One more event to read'}</div>
+                </div>
               </div>
-            </div>
-          )}
+            )
+          })()}
         </div>
       )}
 
       {/* ?? Round-Recap Phase ????????????????????????????????????????????????? */}
-      {gamePhase === 'round-recap' && currentResult && currentEvent && (
+      {gamePhase === 'round-recap' && currentResult && (
         <div style={{ minHeight: '100vh', background: '#FAF4E8', display: 'flex', flexDirection: 'column' }}>
 
           {/* Header bar */}
@@ -837,16 +849,20 @@ export default function LandingV2() {
 
             {/* LEFT: per-asset P&L */}
             <div style={{ overflowY: 'auto', padding: '32px 40px 48px', borderRight: '1px solid #E8D9C8' }}>
-              {/* Event chip */}
-              <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: '8px',
-                background: `${currentEvent.color}12`, border: `1px solid ${currentEvent.color}35`,
-                borderRadius: '4px', padding: '6px 14px', marginBottom: '24px',
-              }}>
-                <span>{currentEvent.icon}</span>
-                <span style={{ fontFamily: '"Lora", serif', fontSize: '12px', color: '#2C1810', fontWeight: 600 }}>
-                  {currentEvent.title}
-                </span>
+              {/* Event chips ? one per event */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '24px' }}>
+                {currentEvents.map(ev => (
+                  <div key={ev.id} style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '8px',
+                    background: `${ev.color}12`, border: `1px solid ${ev.color}35`,
+                    borderRadius: '4px', padding: '6px 14px',
+                  }}>
+                    <span>{ev.icon}</span>
+                    <span style={{ fontFamily: '"Lora", serif', fontSize: '12px', color: '#2C1810', fontWeight: 600 }}>
+                      {ev.title}
+                    </span>
+                  </div>
+                ))}
               </div>
 
               <div style={{ fontFamily: '"Playfair Display", serif', fontSize: '18px', fontWeight: 700, color: '#2C1810', marginBottom: '20px' }}>
@@ -1045,7 +1061,7 @@ export default function LandingV2() {
             <div style={{ fontFamily: '"Lora", serif', fontSize: '11px', color: '#A8D5B870', letterSpacing: '3px', textTransform: 'uppercase', marginBottom: '16px', textAlign: 'center' }}>Round-by-Round</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {roundHistory.map((h, i) => {
-                const ev = getEventById(h.eventId)
+                const ev = getEventById(h.eventIds[0])
                 return (
                   <div key={h.round} style={{
                     display: 'flex', alignItems: 'center', gap: '16px',

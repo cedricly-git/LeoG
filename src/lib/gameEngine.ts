@@ -1,11 +1,12 @@
 import type { CsvDataMap, MultiplierMap } from './csvLoader'
 import { getPriceAt } from './csvLoader'
 import type { AnimalCategory } from '../data/assetAnimalMapping'
+import { GAME_EVENTS } from '../data/events'
 import type { GameEventTemplate } from '../data/events'
 
 export const SESSION_START_DATE = new Date('2021-03-19T12:00:00Z')
 export const TOTAL_ROUNDS = 7
-export const UNIT_COST = 20
+export const UNIT_COST = 50
 
 export const TIME_SKIP_OPTIONS: { days: number; label: string }[] = [
   { days: 3,   label: '3 days' },
@@ -49,7 +50,8 @@ export interface AssetPnl {
 
 export interface RoundResult {
   round: number
-  eventId: number
+  /** IDs of all events that fired this round (always 2) */
+  eventIds: number[]
   timeSkipDays: number
   startDate: Date
   endDate: Date
@@ -65,10 +67,31 @@ export function rollTimeSkips(): number[] {
   )
 }
 
-export function rollEventIndices(): number[] {
-  return Array.from({ length: TOTAL_ROUNDS }, () =>
-    Math.floor(Math.random() * 12) + 1
+/**
+ * Pick `count` events for a single round, prioritising events that affect
+ * the animals the player has actually selected.  Relevant events come first
+ * (shuffled), then irrelevant ones fill any remaining slots.  No duplicates.
+ */
+export function pickEventsForRound(
+  selectedAnimalNames: string[],
+  count: number = 2,
+): number[] {
+  const shuffle = <T>(arr: T[]): T[] => [...arr].sort(() => Math.random() - 0.5)
+
+  const relevant   = GAME_EVENTS.filter(e =>
+    e.affectedAnimalNames.some(n => selectedAnimalNames.includes(n)),
   )
+  const irrelevant = GAME_EVENTS.filter(e =>
+    !e.affectedAnimalNames.some(n => selectedAnimalNames.includes(n)),
+  )
+
+  const pool   = [...shuffle(relevant), ...shuffle(irrelevant)]
+  const chosen: number[] = []
+  for (const e of pool) {
+    if (chosen.length >= count) break
+    chosen.push(e.id)
+  }
+  return chosen
 }
 
 export function advanceDate(baseDate: Date, days: number): Date {
@@ -84,15 +107,17 @@ export function getTimeSkipLabel(days: number): string {
 
 /**
  * Calculates per-asset and aggregate P&L for a single round.
+ * All events in `events` are applied — their bonuses stack for assets
+ * that appear in more than one event's affectedAnimalNames.
  *
- * Formula:
- *   eventBonusPct  = isAffected ? (±1) × event.eventNumber × csvMultiplier / 100 : 0
- *   effectivePct   = rawPct × gameMultiplier + eventBonusPct
- *   dollarPnl      = units × $100 × effectivePct
+ * Formula (per event that affects the asset):
+ *   eventBonusPct += (±1) × event.eventNumber × csvMultiplier / 100
+ *   effectivePct   = rawPct × gameMultiplier + totalEventBonusPct
+ *   dollarPnl      = units × UNIT_COST × effectivePct
  */
 export function calculateRoundPnl(
   round: number,
-  event: GameEventTemplate,
+  events: GameEventTemplate[],
   portfolio: PortfolioItem[],
   startDate: Date,
   endDate: Date,
@@ -110,11 +135,17 @@ export function calculateRoundPnl(
       rawPct = (endPrice - startPrice) / startPrice
     }
 
-    const csvMult        = multiplierMap.get(item.assetName) ?? 1
-    const isEventAffected = event.affectedAnimalNames.includes(item.animalName)
-    const eventBonusPct  = isEventAffected
-      ? (event.isPositive ? 1 : -1) * event.eventNumber * csvMult / 100
-      : 0
+    const csvMult = multiplierMap.get(item.assetName) ?? 1
+
+    // Accumulate bonus from every event that touches this asset
+    let eventBonusPct   = 0
+    let isEventAffected = false
+    for (const event of events) {
+      if (event.affectedAnimalNames.includes(item.animalName)) {
+        isEventAffected = true
+        eventBonusPct  += (event.isPositive ? 1 : -1) * event.eventNumber * csvMult / 100
+      }
+    }
 
     const effectivePct = rawPct * item.multiplier + eventBonusPct
     const dollarPnl    = item.units * UNIT_COST * effectivePct
@@ -135,12 +166,12 @@ export function calculateRoundPnl(
     }
   })
 
-  const totalPnl           = assetResults.reduce((s, r) => s + r.dollarPnl, 0)
+  const totalPnl            = assetResults.reduce((s, r) => s + r.dollarPnl, 0)
   const portfolioValueAfter = portfolioValueBefore + totalPnl
 
   return {
     round,
-    eventId: event.id,
+    eventIds: events.map(e => e.id),
     timeSkipDays,
     startDate,
     endDate,
