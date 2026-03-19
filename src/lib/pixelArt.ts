@@ -3,6 +3,7 @@ export const IMPORTED_PIXEL_ART_CATEGORIES = new Set([
   'Guard Dog',
   'Horse',
   'Bovine',
+  'Tool',
 ])
 
 function colorDistance(a: Uint8ClampedArray | number[], b: Uint8ClampedArray | number[]) {
