@@ -145,7 +145,7 @@ export default function LandingV2() {
           color: '#A8D5B8',
           textTransform: 'uppercase',
           marginBottom: '8px',
-        }}>Season One · The Harvest Begins</div>
+        }}>Season One ï¿½ The Harvest Begins</div>
 
         <h1 style={{
           fontFamily: '"Playfair Display", serif',
@@ -276,7 +276,7 @@ export default function LandingV2() {
                           fontFamily: '"Lora", serif',
                           fontSize: '12px',
                           color: '#8B6B50',
-                        }}>{animal.asset} · {animal.returnProfile}</div>
+                        }}>{animal.asset} ï¿½ {animal.returnProfile}</div>
                         <div style={{ marginTop: '4px', display: 'flex', gap: '6px', alignItems: 'center' }}>
                           <span style={{
                             fontSize: '11px', color: '#B89070',
@@ -500,7 +500,7 @@ export default function LandingV2() {
                       borderRadius: '2px',
                       color: '#2C1810',
                     }}>
-                      {a.emoji} {a.name} ×{count}
+                      {a.emoji} {a.name} ï¿½{count}
                     </span>
                   )
                 })}
