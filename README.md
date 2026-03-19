@@ -1,6 +1,12 @@
-# React + TypeScript + Vite
+# LeoG
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Repository for the Starthack 2026
+
+---
+
+## Tech Stack
+
+This project is built with React + TypeScript + Vite with HMR and ESLint rules.
 
 Currently, two official plugins are available:
 
