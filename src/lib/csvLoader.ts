@@ -5,7 +5,13 @@ export interface PricePoint {
   close: number
 }
 
-export type CsvDataMap = Map<string, PricePoint[]>
+export type CsvDataMap    = Map<string, PricePoint[]>
+export type MultiplierMap = Map<string, number>
+
+export interface CsvLoadResult {
+  csvData:       CsvDataMap
+  multiplierMap: MultiplierMap
+}
 
 async function fetchCsv(url: string): Promise<Record<string, string>[]> {
   const res = await fetch(url)
@@ -19,11 +25,13 @@ async function fetchCsv(url: string): Promise<Record<string, string>[]> {
 }
 
 function addRows(
-  map: CsvDataMap,
-  rows: Record<string, string>[],
-  nameKey: string,
-  closeKey: string,
-  dateKey: string,
+  map:           CsvDataMap,
+  multiplierMap: MultiplierMap,
+  rows:          Record<string, string>[],
+  nameKey:       string,
+  closeKey:      string,
+  dateKey:       string,
+  multiplierKey  = 'Multiplier',
 ) {
   for (const row of rows) {
     const name     = row[nameKey]?.trim()
@@ -36,11 +44,17 @@ function addRows(
     const date = new Date(dateStr.slice(0, 10) + 'T12:00:00Z')
     if (!map.has(name)) map.set(name, [])
     map.get(name)!.push({ date, close })
+    // Store the CSV multiplier once per asset (all rows for same asset share the same value)
+    if (!multiplierMap.has(name)) {
+      const mult = parseFloat(row[multiplierKey]?.trim() ?? '')
+      multiplierMap.set(name, isNaN(mult) ? 1 : mult)
+    }
   }
 }
 
-export async function loadAllCsvData(): Promise<CsvDataMap> {
-  const map: CsvDataMap = new Map()
+export async function loadAllCsvData(): Promise<CsvLoadResult> {
+  const csvData:       CsvDataMap    = new Map()
+  const multiplierMap: MultiplierMap = new Map()
 
   const [stocks, etfs, bonds, goldSilver, crypto] = await Promise.all([
     fetchCsv('/Data/Stocks.csv'),
@@ -51,21 +65,21 @@ export async function loadAllCsvData(): Promise<CsvDataMap> {
   ])
 
   // Stocks & ETFs: company → close
-  addRows(map, stocks,     'company',       'close', 'date')
-  addRows(map, etfs,       'company',       'close', 'date')
+  addRows(csvData, multiplierMap, stocks,     'company',       'close', 'date')
+  addRows(csvData, multiplierMap, etfs,       'company',       'close', 'date')
   // Bonds: request_label → close
-  addRows(map, bonds,      'request_label', 'close', 'date')
+  addRows(csvData, multiplierMap, bonds,      'request_label', 'close', 'date')
   // Gold & Silver: company → close
-  addRows(map, goldSilver, 'company',       'close', 'date')
+  addRows(csvData, multiplierMap, goldSilver, 'company',       'close', 'date')
   // Crypto: Name → Open (no Close column in source data)
-  addRows(map, crypto,     'Name',          'Open',  'Date')
+  addRows(csvData, multiplierMap, crypto,     'Name',          'Open',  'Date')
 
   // Sort each series chronologically
-  for (const [, points] of map) {
+  for (const [, points] of csvData) {
     points.sort((a, b) => a.date.getTime() - b.date.getTime())
   }
 
-  return map
+  return { csvData, multiplierMap }
 }
 
 /**

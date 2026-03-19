@@ -1,16 +1,18 @@
-import type { CsvDataMap } from './csvLoader'
+import type { CsvDataMap, MultiplierMap } from './csvLoader'
 import { getPriceAt } from './csvLoader'
 import type { AnimalCategory } from '../data/assetAnimalMapping'
+import type { GameEventTemplate } from '../data/events'
 
 export const SESSION_START_DATE = new Date('2021-03-19T12:00:00Z')
 export const TOTAL_ROUNDS = 7
+export const UNIT_COST = 20
 
 export const TIME_SKIP_OPTIONS: { days: number; label: string }[] = [
-  { days: 1,   label: '24 hours' },
   { days: 3,   label: '3 days' },
   { days: 7,   label: '1 week' },
   { days: 14,  label: '2 weeks' },
   { days: 30,  label: '1 month' },
+  { days: 60,  label: '2 months' },
   { days: 120, label: '4 months' },
   { days: 180, label: '6 months' },
   { days: 365, label: '12 months' },
@@ -33,11 +35,15 @@ export interface AssetPnl {
   multiplier: number
   startPrice: number | null
   endPrice: number | null
-  /** Raw % change in the underlying asset (before multiplier) */
+  /** Raw % change in the underlying asset (before game multiplier) */
   rawPct: number
-  /** Effective % change after multiplier */
+  /** Effective % change: rawPct × gameMultiplier + eventBonusPct */
   effectivePct: number
-  /** Dollar P&L: units × $100 × rawPct × multiplier */
+  /** Additional % from the round event (0 if this asset is not affected) */
+  eventBonusPct: number
+  /** Whether this asset was impacted by the round's event */
+  isEventAffected: boolean
+  /** Dollar P&L: units × $100 × effectivePct */
   dollarPnl: number
 }
 
@@ -78,16 +84,21 @@ export function getTimeSkipLabel(days: number): string {
 
 /**
  * Calculates per-asset and aggregate P&L for a single round.
- * The dollar P&L for each asset = units × $100 × rawPctChange × multiplier
+ *
+ * Formula:
+ *   eventBonusPct  = isAffected ? (±1) × event.eventNumber × csvMultiplier / 100 : 0
+ *   effectivePct   = rawPct × gameMultiplier + eventBonusPct
+ *   dollarPnl      = units × $100 × effectivePct
  */
 export function calculateRoundPnl(
   round: number,
-  eventId: number,
+  event: GameEventTemplate,
   portfolio: PortfolioItem[],
   startDate: Date,
   endDate: Date,
   timeSkipDays: number,
   csvData: CsvDataMap,
+  multiplierMap: MultiplierMap,
   portfolioValueBefore: number,
 ): RoundResult {
   const assetResults: AssetPnl[] = portfolio.map(item => {
@@ -99,8 +110,14 @@ export function calculateRoundPnl(
       rawPct = (endPrice - startPrice) / startPrice
     }
 
-    const effectivePct = rawPct * item.multiplier
-    const dollarPnl    = item.units * 100 * rawPct * item.multiplier
+    const csvMult        = multiplierMap.get(item.assetName) ?? 1
+    const isEventAffected = event.affectedAnimalNames.includes(item.animalName)
+    const eventBonusPct  = isEventAffected
+      ? (event.isPositive ? 1 : -1) * event.eventNumber * csvMult / 100
+      : 0
+
+    const effectivePct = rawPct * item.multiplier + eventBonusPct
+    const dollarPnl    = item.units * UNIT_COST * effectivePct
 
     return {
       assetName: item.assetName,
@@ -112,6 +129,8 @@ export function calculateRoundPnl(
       endPrice,
       rawPct,
       effectivePct,
+      eventBonusPct,
+      isEventAffected,
       dollarPnl,
     }
   })
@@ -121,7 +140,7 @@ export function calculateRoundPnl(
 
   return {
     round,
-    eventId,
+    eventId: event.id,
     timeSkipDays,
     startDate,
     endDate,
