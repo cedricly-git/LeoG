@@ -170,6 +170,18 @@ export function calculateRoundPnl(
   multiplierMap: MultiplierMap,
   portfolioValueBefore: number,
 ): RoundResult {
+  // Total units held across the whole portfolio — used for concentration scoring.
+  const totalUnits = portfolio.reduce((s, p) => s + p.units, 0)
+
+  /**
+   * Time-scale factor for negative events.
+   * Long timeskips give raw gains that would otherwise swallow a flat event penalty.
+   * This ramps the penalty linearly beyond the first 30 days so a 18-month bad
+   * event hits ~2.4× harder than a 1-month one, matching the proportionally
+   * larger raw return window.  Stays at 1.0 for ≤ 30-day rounds.
+   */
+  const timeScale = 1 + Math.max(0, timeSkipDays - 30) / 365
+
   const assetResults: AssetPnl[] = portfolio.map(item => {
     const startPrice = getPriceAt(csvData, item.assetName, startDate)
     const endPrice   = getPriceAt(csvData, item.assetName, endDate)
@@ -187,7 +199,27 @@ export function calculateRoundPnl(
     for (const event of events) {
       if (event.affectedAnimalNames.includes(item.animalName)) {
         isEventAffected = true
-        eventBonusPct  += (event.isPositive ? 1 : -1) * event.eventNumber * csvMult / 100
+
+        let eventMult = 1
+        if (!event.isPositive) {
+          // Concentration: share of total portfolio units in this event's affected assets.
+          const affectedUnits = portfolio
+            .filter(p => event.affectedAnimalNames.includes(p.animalName))
+            .reduce((s, p) => s + p.units, 0)
+          const concentration = totalUnits > 0 ? affectedUnits / totalUnits : 0
+
+          const concMult =
+            concentration > 0.8 ? 1.8
+            : concentration > 0.6 ? 1.5
+            : concentration > 0.4 ? 1.2
+            : 1.0
+
+          // Cap the combined multiplier at 3× so bad runs hurt badly but
+          // never exceed a full-portfolio wipe on a single event.
+          eventMult = Math.min(timeScale * concMult, 3.0)
+        }
+
+        eventBonusPct += (event.isPositive ? 1 : -1) * event.eventNumber * csvMult / 100 * eventMult
       }
     }
 

@@ -1,6 +1,18 @@
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 
+const aiRecapValidator = v.object({
+  summary: v.string(),
+  riskProfiling: v.string(),
+  diversification: v.string(),
+  longTermInvesting: v.string(),
+  assetClasses: v.string(),
+  topTip: v.string(),
+  archetype: v.string(),
+  overallScore: v.number(),
+  generatedAt: v.number(),
+})
+
 export const createGame = mutation({
   args: { userId: v.id('users') },
   returns: v.id('games'),
@@ -88,6 +100,20 @@ export const deleteGame = mutation({
   },
 })
 
+export const saveAiRecap = mutation({
+  args: {
+    gameId: v.id('games'),
+    aiRecap: aiRecapValidator,
+  },
+  returns: v.null(),
+  handler: async (ctx, { gameId, aiRecap }) => {
+    const game = await ctx.db.get(gameId)
+    if (!game) throw new Error('Game not found')
+    await ctx.db.patch(gameId, { aiRecap })
+    return null
+  },
+})
+
 export const getUserGames = query({
   args: { userId: v.id('users') },
   returns: v.array(v.object({
@@ -99,6 +125,7 @@ export const getUserGames = query({
     completedAt: v.optional(v.number()),
     finalPortfolioValue: v.optional(v.number()),
     totalPnl: v.optional(v.number()),
+    aiRecap: v.optional(aiRecapValidator),
   })),
   handler: async (ctx, { userId }) => {
     return await ctx.db

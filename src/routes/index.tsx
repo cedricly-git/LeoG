@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState, useEffect, useCallback } from 'react'
-import { useMutation } from 'convex/react'
+import { useMutation, useAction } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
 import { PixelAnimal, PIXEL_SPRITES } from '../components/PixelAnimal'
@@ -341,7 +341,7 @@ function AnimalCard({
             </div>
           ) : (
             <div style={{ fontFamily: '"Lora", serif', fontSize: '11px', color: '#B89070', fontStyle: 'italic' }}>
-              Seasonal breed ? farm performance
+              Seasonal breed &middot; farm performance
             </div>
           )}
           <div style={{ marginTop: '4px', display: 'flex', gap: '6px', alignItems: 'center' }}>
@@ -392,7 +392,7 @@ function AnimalCard({
           ) : (
             <>
               <strong style={{ fontStyle: 'normal' }}>{animal.animalName}</strong> is a prized
-              breed on the farm. Its growth is shaped by world events and seasonal forces ?
+              breed on the farm. Its growth is shaped by world events and seasonal forces&mdash;
               build your herd wisely and diversity will see you through any storm.
             </>
           )}
@@ -461,7 +461,7 @@ function LockOverlay({ phase, round }: { phase: GamePhase; round: number }) {
             fontFamily: '"Lora", serif', fontSize: '12px',
             color: '#A8D5B8', letterSpacing: '4px', textTransform: 'uppercase',
             marginTop: '8px',
-          }}>of {TOTAL_ROUNDS} ? The Harvest Begins</div>
+          }}>of {TOTAL_ROUNDS} &middot; The Harvest Begins</div>
         </div>
       )}
     </div>
@@ -486,11 +486,12 @@ export default function LandingV2() {
   )
   const [activeAnimalTab, setActiveAnimalTab] = useState<AnimalGroupTab>('livestock')
 
-  // Convex mutations
-  const createGameMutation     = useMutation(api.games.createGame)
-  const saveRoundMutation      = useMutation(api.rounds.saveRound)
-  const completeGameMutation   = useMutation(api.games.completeGame)
+  // Convex mutations & actions
+  const createGameMutation      = useMutation(api.games.createGame)
+  const saveRoundMutation       = useMutation(api.rounds.saveRound)
+  const completeGameMutation    = useMutation(api.games.completeGame)
   const updateUserStatsMutation = useMutation(api.users.updateUserStats)
+  const analyzeGameAction       = useAction(api.ai.analyzeGame)
 
   // CSV data
   const [csvData, setCsvData] = useState<CsvDataMap | null>(null)
@@ -505,6 +506,17 @@ export default function LandingV2() {
   const [roundHistory, setRoundHistory]       = useState<RoundResult[]>([])
   const [currentResult, setCurrentResult]     = useState<RoundResult | null>(null)
   const [portfolioValue, setPortfolioValue]   = useState(1000)
+
+  // AI recap state
+  type AiRecap = {
+    summary: string; riskProfiling: string; diversification: string
+    longTermInvesting: string; assetClasses: string; topTip: string
+    archetype: string; overallScore: number; generatedAt: number
+  }
+  const [aiRecap, setAiRecap]       = useState<AiRecap | null>(null)
+  const [aiLoading, setAiLoading]   = useState(false)
+  const [aiError, setAiError]       = useState<string | null>(null)
+  const [aiTab, setAiTab]           = useState<'risk' | 'diversification' | 'longterm' | 'classes'>('risk')
 
   // Round-active animation step: 'time-skip' ? 'event-1' ? 'event-2'
   const [activeStep, setActiveStep] = useState<'time-skip' | 'event-1' | 'event-2'>('time-skip')
@@ -610,7 +622,14 @@ export default function LandingV2() {
       startDate, endDate, skipDays,
       csvData, multiplierMap, portfolioValue,
     )
-    setCurrentResult(result)
+
+    // Losses are capped at the invested amount ? uninvested cash is never at risk.
+    // You can lose at most what you put in; the idle cash is always preserved.
+    const cashFloor = portfolioValue - spent
+    const clampedPortfolioValueAfter = Math.max(cashFloor, result.portfolioValueAfter)
+    const clampedTotalPnl = clampedPortfolioValueAfter - portfolioValue
+
+    setCurrentResult({ ...result, portfolioValueAfter: clampedPortfolioValueAfter, totalPnl: clampedTotalPnl })
     setGamePhase('round-recap')
   }
 
@@ -630,9 +649,41 @@ export default function LandingV2() {
     if (!currentResult) return
     const newHistory = [...roundHistory, currentResult]
     setRoundHistory(newHistory)
-    setPortfolioValue(currentResult.portfolioValueAfter)
+    const newPortfolioValue = currentResult.portfolioValueAfter
+    setPortfolioValue(newPortfolioValue)
     // Advance the CSV cursor
     setCurrentCsvDate(currentResult.endDate)
+
+    // Sync selected quantities to reflect the P&L on invested assets only.
+    // Scale based on what the investment returned ? never consume uninvested cash.
+    const investedAfterPnl = Math.max(0, spent + currentResult.totalPnl)
+    const newMaxUnits = Math.floor(investedAfterPnl / UNIT_COST)
+    const currentTotalUnits = Object.values(selected).reduce((a, b) => a + b, 0)
+    if (currentTotalUnits > newMaxUnits) {
+      if (newMaxUnits <= 0) {
+        setSelected({})
+      } else {
+        const scale = newMaxUnits / currentTotalUnits
+        const entries = Object.entries(selected).map(([id, count]) => {
+          const raw = count * scale
+          return { id, count, newCount: Math.floor(raw), frac: raw - Math.floor(raw) }
+        })
+        let allocated = entries.reduce((s, e) => s + e.newCount, 0)
+        let remaining = newMaxUnits - allocated
+        // Distribute leftover slots to the assets with the largest fractional remainders
+        const sorted = [...entries].sort((a, b) => b.frac - a.frac)
+        for (const e of sorted) {
+          if (remaining <= 0) break
+          e.newCount++
+          remaining--
+        }
+        const newSelected: Record<string, number> = {}
+        for (const e of entries) {
+          if (e.newCount > 0) newSelected[e.id] = e.newCount
+        }
+        setSelected(newSelected)
+      }
+    }
 
     // Persist round to Convex
     if (currentUserId && currentGameId) {
@@ -684,6 +735,48 @@ export default function LandingV2() {
           finalPortfolioValue: finalValue,
           roundsPlayed: newHistory.length,
         }).catch(err => console.error('Failed to update user stats:', err))
+
+        // Trigger AI analysis
+        setAiLoading(true)
+        setAiRecap(null)
+        setAiError(null)
+        const roundsForAi = newHistory.map(h => {
+          const catUnits: Record<string, number> = {}
+          const catPnl:   Record<string, number> = {}
+          h.assetResults.forEach(r => {
+            catUnits[r.animalCategory] = (catUnits[r.animalCategory] ?? 0) + r.units
+            catPnl[r.animalCategory]   = (catPnl[r.animalCategory]   ?? 0) + r.dollarPnl
+          })
+          const categories    = Object.keys(catUnits)
+          const units         = categories.map(c => catUnits[c])
+          const pnlPerCat     = categories.map(c => catPnl[c])
+          const events        = h.eventIds.map(id => getEventById(id))
+          return {
+            roundNumber:          h.round,
+            timeSkipDays:         h.timeSkipDays,
+            eventTitles:          events.map(e => e.title),
+            eventPositive:        events.map(e => e.isPositive),
+            categories,
+            units,
+            pnlPerCategory:       pnlPerCat,
+            portfolioValueBefore: h.portfolioValueBefore,
+            portfolioValueAfter:  h.portfolioValueAfter,
+            totalPnl:             h.totalPnl,
+          }
+        })
+        analyzeGameAction({
+          gameId: currentGameId,
+          rounds: roundsForAi,
+          finalPortfolioValue: finalValue,
+          startValue: 1000,
+        }).then(recap => {
+          setAiRecap(recap)
+          setAiLoading(false)
+        }).catch(err => {
+          console.error('AI analysis failed:', err)
+          setAiError(err instanceof Error ? err.message : 'AI analysis unavailable')
+          setAiLoading(false)
+        })
       }
       setGamePhase('game-over')
     } else {
@@ -702,6 +795,10 @@ export default function LandingV2() {
     setCurrentResult(null)
     setPortfolioValue(1000)
     setActiveTab('Stock')
+    setAiRecap(null)
+    setAiLoading(false)
+    setAiError(null)
+    setAiTab('risk')
 
     // Create a new game for the same player (skips profile screen)
     if (currentUserId) {
@@ -826,6 +923,11 @@ export default function LandingV2() {
         }
         .slide-up { animation: slideUp 0.55s cubic-bezier(0.34,1.3,0.64,1) both; }
 
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
+        }
+
         @keyframes fadeIn {
           from { opacity:0; }
           to   { opacity:1; }
@@ -882,7 +984,7 @@ export default function LandingV2() {
               background: 'rgba(245,200,66,0.06)', border: '1px solid rgba(245,200,66,0.2)',
               borderRadius: '8px', padding: '24px 40px',
             }}>
-              <span style={{ fontSize: '36px' }}>??</span>
+              <span style={{ fontSize: '36px' }} aria-hidden role="img">&#x1F3B2;</span>
               <div style={{ textAlign: 'left' }}>
                 <div style={{
                   fontFamily: '"Lora", serif', fontSize: '11px',
@@ -894,7 +996,7 @@ export default function LandingV2() {
                   fontWeight: 700, color: '#F5C842',
                 }}>
                   {activeStep === 'time-skip'
-                    ? <span className="dice-flicker">Rolling?</span>
+                    ? <span className="dice-flicker">Rolling&hellip;</span>
                     : roundSkipLabel}
                 </div>
                 {(activeStep === 'event-1' || activeStep === 'event-2') && (
@@ -902,7 +1004,7 @@ export default function LandingV2() {
                     fontFamily: '"Lora", serif', fontSize: '12px',
                     color: '#A8D5B8', marginTop: '4px',
                   }}>
-                    {formatMonthYear(currentCsvDate)} ? {formatMonthYear(advanceDate(currentCsvDate, roundSkipDays))}
+                    {formatMonthYear(currentCsvDate)} &ndash; {formatMonthYear(advanceDate(currentCsvDate, roundSkipDays))}
                   </div>
                 )}
               </div>
@@ -929,7 +1031,7 @@ export default function LandingV2() {
                     borderRadius: '4px', padding: '2px 10px',
                     fontFamily: '"Lora", serif', fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase',
                     color: ev.isPositive ? '#4ade80' : '#f87171', fontWeight: 600,
-                  }}>{ev.isPositive ? '? Positive' : '? Negative'}</div>
+                  }}>{ev.isPositive ? 'Positive' : 'Negative'}</div>
                 </div>
 
                 {/* Main card */}
@@ -999,12 +1101,12 @@ export default function LandingV2() {
                     onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLButtonElement).style.opacity = '0.9' }}
                     onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLButtonElement).style.opacity = '1' }}
                   >
-                    {isLast ? 'See Results ?' : 'Next Event ?'}
+                    {isLast ? 'See Results' : 'Next Event'}
                   </button>
                   <div style={{
                     marginTop: '10px', fontFamily: '"Lora", serif', fontSize: '10px',
                     color: '#A8D5B840', letterSpacing: '1px',
-                  }}>{isLast ? 'Take your time ? press when ready' : 'One more event to read'}</div>
+                  }}>{isLast ? 'Take your time &mdash; press when ready' : 'One more event to read'}</div>
                 </div>
               </div>
             )
@@ -1026,7 +1128,7 @@ export default function LandingV2() {
               <span style={{
                 fontFamily: '"Playfair Display", serif', fontSize: '20px',
                 fontWeight: 900, color: '#F5C842', letterSpacing: '1px',
-              }}>Round {currentRound} ? Results</span>
+              }}>Round {currentRound} &middot; Results</span>
               <span style={{
                 fontFamily: '"Lora", serif', fontSize: '10px',
                 color: '#A8D5B870', letterSpacing: '3px', textTransform: 'uppercase',
@@ -1107,7 +1209,7 @@ export default function LandingV2() {
                           {r.animalName}
                         </div>
                         <div style={{ fontFamily: '"Lora", serif', fontSize: '11px', color: '#8B6B50' }}>
-                          {r.assetName} ? {r.units} unit{r.units !== 1 ? 's' : ''}
+                          {r.assetName} &middot; {r.units} unit{r.units !== 1 ? 's' : ''}
                           {r.isEventAffected && (
                             <span style={{
                               color: r.eventBonusPct >= 0 ? '#16a34a' : '#dc2626',
@@ -1120,7 +1222,7 @@ export default function LandingV2() {
                         </div>
                         {r.startPrice != null && r.endPrice != null && (
                           <div style={{ fontFamily: '"Lora", serif', fontSize: '10px', color: '#B89070', marginTop: '2px' }}>
-                            {r.startPrice.toFixed(2)} ? {r.endPrice.toFixed(2)}
+                            {r.startPrice.toFixed(2)} &rarr; {r.endPrice.toFixed(2)}
                           </div>
                         )}
                         {r.startPrice == null && (
@@ -1169,7 +1271,7 @@ export default function LandingV2() {
                 <div style={{ fontFamily: '"Lora", serif', fontSize: '10px', color: '#8B6B50', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '10px' }}>Portfolio Value</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ fontFamily: '"Playfair Display", serif', fontSize: '16px', color: '#8B6B50' }}>${currentResult.portfolioValueBefore.toFixed(0)}</span>
-                  <span style={{ color: '#B89070', fontSize: '14px' }}>?</span>
+                  <span style={{ color: '#B89070', fontSize: '14px' }} aria-hidden>&rarr;</span>
                   <span style={{
                     fontFamily: '"Playfair Display", serif', fontSize: '20px', fontWeight: 700,
                     color: currentResult.portfolioValueAfter >= currentResult.portfolioValueBefore ? '#16a34a' : '#dc2626',
@@ -1218,8 +1320,8 @@ export default function LandingV2() {
                 onMouseLeave={e => { e.currentTarget.style.background = '#2D6A4F' }}
               >
                 {currentRound >= TOTAL_ROUNDS
-                  ? 'See Final Results ??'
-                  : `Adjust Portfolio ? Round ${currentRound + 1} ?`}
+                  ? 'See Final Results'
+                  : `Adjust Portfolio \u00B7 Round ${currentRound + 1}`}
               </button>
             </div>
           </div>
@@ -1238,7 +1340,7 @@ export default function LandingV2() {
               fontFamily: '"Lora", serif', fontSize: '11px',
               color: '#A8D5B870', letterSpacing: '4px', textTransform: 'uppercase',
               marginBottom: '8px',
-            }}>Season One ? Complete</div>
+            }}>Season One &middot; Complete</div>
             <div style={{
               fontFamily: '"Playfair Display", serif', fontSize: '48px',
               fontWeight: 900, color: '#FAF4E8',
@@ -1273,41 +1375,263 @@ export default function LandingV2() {
           </div>
             <StrategyAdvisor portfolio={buildPortfolioItems()} currentValue={portfolioValue} round={currentRound} history={roundHistory} isFinal={true} />
 
-          {/* Round-by-round summary */}
-          <div className="slide-up" style={{ animationDelay: '0.4s', width: '100%', maxWidth: '640px' }}>
-            <div style={{ fontFamily: '"Lora", serif', fontSize: '11px', color: '#A8D5B870', letterSpacing: '3px', textTransform: 'uppercase', marginBottom: '16px', textAlign: 'center' }}>Round-by-Round</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {roundHistory.map((h, i) => {
-                const ev = getEventById(h.eventIds[0])
-                return (
-                  <div key={h.round} style={{
-                    display: 'flex', alignItems: 'center', gap: '16px',
-                    background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-                    borderRadius: '6px', padding: '12px 16px',
-                    animation: `pnlCardIn 0.4s ease ${i * 0.06}s both`,
-                  }}>
+          {/* AI Advisor Recap */}
+          <div className="slide-up" style={{ animationDelay: '0.35s', width: '100%', maxWidth: '680px' }}>
+            {aiLoading && (
+              <div style={{
+                padding: '32px', borderRadius: '12px',
+                background: 'linear-gradient(135deg, rgba(29,95,160,0.12), rgba(45,106,79,0.08))',
+                border: '1px solid rgba(29,95,160,0.25)',
+                textAlign: 'center',
+              }}>
+                <div style={{
+                  display: 'inline-block', width: '32px', height: '32px',
+                  border: '3px solid rgba(29,95,160,0.2)',
+                  borderTopColor: '#1D5FA0', borderRadius: '50%',
+                  animation: 'spin 0.9s linear infinite', marginBottom: '14px',
+                }} />
+                <div style={{ fontFamily: '"Playfair Display", serif', fontSize: '16px', color: '#A8D5B8', marginBottom: '6px' }}>
+                  Analysing your season&hellip;
+                </div>
+                <div style={{ fontFamily: '"Lora", serif', fontSize: '12px', color: '#A8D5B860' }}>
+                  Our AI advisor is reviewing your investments, news events, and portfolio decisions
+                </div>
+              </div>
+            )}
+
+            {aiError && !aiLoading && (
+              <div style={{
+                padding: '20px 24px', borderRadius: '10px',
+                background: 'rgba(248,113,113,0.06)', border: '1px solid rgba(248,113,113,0.2)',
+                fontFamily: '"Lora", serif', fontSize: '13px', color: '#F87171',
+              }}>
+                <span style={{ fontWeight: 600 }}>AI Advisor unavailable</span>
+                <span style={{ color: '#F8717170', marginLeft: '8px' }}>&mdash; {aiError}</span>
+              </div>
+            )}
+
+            {aiRecap && !aiLoading && (
+              <div style={{
+                borderRadius: '14px', overflow: 'hidden',
+                background: 'linear-gradient(160deg, rgba(18,30,20,0.95), rgba(10,20,30,0.95))',
+                border: '1px solid rgba(74,222,128,0.15)',
+                boxShadow: '0 8px 48px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04)',
+              }}>
+                {/* Header */}
+                <div style={{
+                  padding: '20px 24px 16px',
+                  borderBottom: '1px solid rgba(255,255,255,0.06)',
+                  display: 'flex', alignItems: 'flex-start', gap: '20px',
+                }}>
+                  <div style={{ flex: 1 }}>
                     <div style={{
-                      fontFamily: '"Playfair Display", serif', fontSize: '13px',
-                      color: '#F5C84290', minWidth: '60px',
-                    }}>Rnd {h.round}</div>
-                    <span style={{ fontSize: '16px' }}>{ev.icon}</span>
-                    <div style={{ flex: 1, fontFamily: '"Lora", serif', fontSize: '12px', color: '#A8D5B870' }}>
-                      {getTimeSkipLabel(h.timeSkipDays)}
-                    </div>
+                      fontFamily: '"Lora", serif', fontSize: '10px',
+                      color: '#4ADE8090', letterSpacing: '3px', textTransform: 'uppercase', marginBottom: '6px',
+                    }}>AI Strategy Advisor</div>
                     <div style={{
-                      fontFamily: '"Playfair Display", serif', fontSize: '15px', fontWeight: 700,
-                      color: h.totalPnl >= 0 ? '#4ADE80' : '#F87171',
-                    }}>{formatPnl(h.totalPnl)}</div>
+                      fontFamily: '"Playfair Display", serif', fontSize: '20px',
+                      fontWeight: 900, color: '#FAF4E8', marginBottom: '8px',
+                    }}>{aiRecap.archetype}</div>
                     <div style={{
-                      fontFamily: '"Lora", serif', fontSize: '12px',
-                      color: h.totalPnl >= 0 ? '#4ADE8080' : '#F8717180',
-                      minWidth: '60px', textAlign: 'right',
-                    }}>${h.portfolioValueAfter.toFixed(0)}</div>
+                      fontFamily: '"Lora", serif', fontSize: '13px',
+                      color: '#A8D5B8C0', lineHeight: '1.6',
+                    }}>{aiRecap.summary}</div>
                   </div>
-                )
-              })}
-            </div>
+                  {/* Score ring */}
+                  <div style={{ flexShrink: 0, textAlign: 'center' }}>
+                    <div style={{
+                      width: '72px', height: '72px', borderRadius: '50%',
+                      background: `conic-gradient(
+                        ${aiRecap.overallScore >= 70 ? '#4ADE80' : aiRecap.overallScore >= 40 ? '#F5C842' : '#F87171'} ${aiRecap.overallScore * 3.6}deg,
+                        rgba(255,255,255,0.07) 0deg
+                      )`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      position: 'relative',
+                    }}>
+                      <div style={{
+                        width: '56px', height: '56px', borderRadius: '50%',
+                        background: '#0f1e10',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <div style={{ fontFamily: '"Playfair Display", serif', fontSize: '18px', fontWeight: 900, color: '#FAF4E8', lineHeight: 1 }}>
+                          {aiRecap.overallScore}
+                        </div>
+                        <div style={{ fontFamily: '"Lora", serif', fontSize: '8px', color: '#A8D5B870', letterSpacing: '1px', textTransform: 'uppercase' }}>score</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tab navigation */}
+                <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                  {([
+                    { key: 'risk',           label: 'Risk Profile' },
+                    { key: 'diversification',label: 'Diversification' },
+                    { key: 'longterm',       label: 'Long-term' },
+                    { key: 'classes',        label: 'Asset Classes' },
+                  ] as const).map(tab => (
+                    <button
+                      key={tab.key}
+                      onClick={() => setAiTab(tab.key)}
+                      style={{
+                        flex: 1, padding: '10px 4px', border: 'none', cursor: 'pointer',
+                        background: aiTab === tab.key ? 'rgba(74,222,128,0.07)' : 'transparent',
+                        borderBottom: aiTab === tab.key ? '2px solid #4ADE80' : '2px solid transparent',
+                        fontFamily: '"Lora", serif', fontSize: '11px', letterSpacing: '0.5px',
+                        color: aiTab === tab.key ? '#4ADE80' : '#A8D5B870',
+                        transition: 'all 0.15s',
+                      }}
+                    >{tab.label}</button>
+                  ))}
+                </div>
+
+                {/* Tab content */}
+                <div style={{ padding: '20px 24px' }}>
+                  <div style={{
+                    fontFamily: '"Lora", serif', fontSize: '13px',
+                    color: '#D4E8D0', lineHeight: '1.7',
+                  }}>
+                    {aiTab === 'risk'            && aiRecap.riskProfiling}
+                    {aiTab === 'diversification' && aiRecap.diversification}
+                    {aiTab === 'longterm'        && aiRecap.longTermInvesting}
+                    {aiTab === 'classes'         && aiRecap.assetClasses}
+                  </div>
+                </div>
+
+                {/* Top tip footer */}
+                <div style={{
+                  padding: '14px 24px 18px',
+                  borderTop: '1px solid rgba(255,255,255,0.06)',
+                  display: 'flex', gap: '12px', alignItems: 'flex-start',
+                }}>
+                  <div style={{
+                    flexShrink: 0, width: '28px', height: '28px', borderRadius: '6px',
+                    background: 'rgba(245,200,66,0.12)', border: '1px solid rgba(245,200,66,0.25)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px',
+                  }} aria-hidden role="img">&#x1F4A1;</div>
+                  <div>
+                    <div style={{ fontFamily: '"Lora", serif', fontSize: '9px', color: '#F5C84270', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '4px' }}>Top Tip for Next Season</div>
+                    <div style={{ fontFamily: '"Lora", serif', fontSize: '12px', color: '#F5C842C0', lineHeight: '1.6', fontStyle: 'italic' }}>
+                      {aiRecap.topTip}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
+
+          {/* Round-by-round summary */}
+          {(() => {
+            const totalDays = roundHistory.reduce((s, h) => s + h.timeSkipDays, 0)
+            const years   = Math.floor(totalDays / 365)
+            const months  = Math.floor((totalDays % 365) / 30)
+            const days    = totalDays % 30
+            const parts: string[] = []
+            if (years  > 0) parts.push(`${years} yr${years  !== 1 ? 's' : ''}`)
+            if (months > 0) parts.push(`${months} mo`)
+            if (days   > 0 && years === 0) parts.push(`${days} d`)
+            const totalLabel = parts.join(' ') || `${totalDays} days`
+
+            return (
+              <div className="slide-up" style={{ animationDelay: '0.4s', width: '100%', maxWidth: '640px' }}>
+                <div style={{ fontFamily: '"Lora", serif', fontSize: '11px', color: '#A8D5B870', letterSpacing: '3px', textTransform: 'uppercase', marginBottom: '16px', textAlign: 'center' }}>Round-by-Round</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {roundHistory.map((h, i) => {
+                    const ev = getEventById(h.eventIds[0])
+                    const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
+                    const startFmt = fmt(h.startDate instanceof Date ? h.startDate : new Date(h.startDate))
+                    const endFmt   = fmt(h.endDate   instanceof Date ? h.endDate   : new Date(h.endDate))
+                    return (
+                      <div key={h.round} style={{
+                        background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+                        borderRadius: '6px', padding: '10px 16px',
+                        animation: `pnlCardIn 0.4s ease ${i * 0.06}s both`,
+                      }}>
+                        {/* Top row: round label + event + P&L */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div style={{
+                            fontFamily: '"Playfair Display", serif', fontSize: '13px',
+                            color: '#F5C84290', minWidth: '52px',
+                          }}>Rnd {h.round}</div>
+                          <span style={{ fontSize: '15px' }}>{ev.icon}</span>
+                          <div style={{ flex: 1 }} />
+                          <div style={{
+                            fontFamily: '"Playfair Display", serif', fontSize: '15px', fontWeight: 700,
+                            color: h.totalPnl >= 0 ? '#4ADE80' : '#F87171',
+                          }}>{formatPnl(h.totalPnl)}</div>
+                          <div style={{
+                            fontFamily: '"Lora", serif', fontSize: '12px',
+                            color: h.totalPnl >= 0 ? '#4ADE8080' : '#F8717180',
+                            minWidth: '60px', textAlign: 'right',
+                          }}>${h.portfolioValueAfter.toFixed(0)}</div>
+                        </div>
+                        {/* Bottom row: date range + duration */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '5px', paddingLeft: '64px' }}>
+                          <span style={{ fontFamily: '"Lora", serif', fontSize: '11px', color: '#F5C842B0', fontWeight: 600 }}>
+                            {startFmt}
+                          </span>
+                          <span style={{ color: '#A8D5B840', fontSize: '10px' }} aria-hidden>&ndash;</span>
+                          <span style={{ fontFamily: '"Lora", serif', fontSize: '11px', color: '#F5C842B0', fontWeight: 600 }}>
+                            {endFmt}
+                          </span>
+                          <span style={{ fontFamily: '"Lora", serif', fontSize: '10px', color: '#A8D5B850', marginLeft: '4px' }}>
+                            &middot; {getTimeSkipLabel(h.timeSkipDays)} ({h.timeSkipDays}d)
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })}
+
+                  {/* Aggregated totals row */}
+                  {/* Aggregated totals row */}
+                  {(() => {
+                    const first = roundHistory[0]
+                    const last  = roundHistory[roundHistory.length - 1]
+                    const fmtShort = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                    const spanStart = fmtShort(first?.startDate instanceof Date ? first.startDate : new Date(first?.startDate))
+                    const spanEnd   = fmtShort(last?.endDate   instanceof Date ? last.endDate   : new Date(last?.endDate))
+                    return (
+                      <div style={{
+                        borderTop: '1px solid rgba(255,255,255,0.12)',
+                        paddingTop: '10px', marginTop: '2px',
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div style={{
+                            fontFamily: '"Lora", serif', fontSize: '11px',
+                            color: '#A8D5B860', letterSpacing: '1.5px', textTransform: 'uppercase',
+                            minWidth: '52px',
+                          }}>Total</div>
+                          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{
+                              fontFamily: '"Playfair Display", serif', fontSize: '15px',
+                              fontWeight: 700, color: '#F5C842',
+                            }}>{totalLabel}</span>
+                            <span style={{ fontFamily: '"Lora", serif', fontSize: '10px', color: '#F5C84260' }}>
+                              ({totalDays} days)
+                            </span>
+                          </div>
+                          <div style={{
+                            fontFamily: '"Playfair Display", serif', fontSize: '15px', fontWeight: 700,
+                            color: portfolioValue >= 1000 ? '#4ADE80' : '#F87171',
+                          }}>{formatPnl(portfolioValue - 1000)}</div>
+                          <div style={{
+                            fontFamily: '"Lora", serif', fontSize: '12px',
+                            color: portfolioValue >= 1000 ? '#4ADE8080' : '#F8717180',
+                            minWidth: '60px', textAlign: 'right',
+                          }}>${portfolioValue.toFixed(0)}</div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '5px', paddingLeft: '60px' }}>
+                          <span style={{ fontFamily: '"Lora", serif', fontSize: '11px', color: '#F5C84275' }}>{spanStart}</span>
+                          <span style={{ color: '#A8D5B840', fontSize: '10px' }}>{'->'}</span>
+                          <span style={{ fontFamily: '"Lora", serif', fontSize: '11px', color: '#F5C84275' }}>{spanEnd}</span>
+                        </div>
+                      </div>
+                    )
+                  })()}
+                </div>
+              </div>
+            )
+          })()}
 
           <div className="slide-up" style={{ animationDelay: '0.6s', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
             {currentUserId && (
@@ -1342,7 +1666,7 @@ export default function LandingV2() {
               onMouseEnter={e => { e.currentTarget.style.background = '#3A8A63' }}
               onMouseLeave={e => { e.currentTarget.style.background = '#2D6A4F' }}
             >
-              {userName ? `Play Again, ${userName} ?` : 'Play Again ? New Season'}
+              {userName ? `Play Again, ${userName}` : 'Play Again \u00B7 New Season'}
             </button>
           </div>
         </div>
@@ -1387,7 +1711,7 @@ export default function LandingV2() {
                     Round <em style={{ color: '#F5C842' }}>{currentRound}</em> of {TOTAL_ROUNDS}
                   </span>
                   <span style={{ fontFamily: '"Lora", serif', fontSize: '11px', color: '#A8D5B880', letterSpacing: '2px', textTransform: 'uppercase' }}>
-                    {userName ? `${userName} ? ` : ''}Adjust Your Farm &middot; Next skip: {roundSkipLabel}
+                    {userName ? `${userName} \u00B7 ` : ''}Adjust Your Farm &middot; Next skip: {roundSkipLabel}
                   </span>
                 </>
               )}
@@ -1442,13 +1766,13 @@ export default function LandingV2() {
                 {formatPnl(lastResult.totalPnl)} ({formatPct(lastResult.totalPnl / lastResult.portfolioValueBefore)})
               </span>
               <span style={{ color: '#8B6B50' }}>
-                ? Portfolio: <strong>${lastResult.portfolioValueAfter.toFixed(0)}</strong>
+                &middot; Portfolio: <strong>${lastResult.portfolioValueAfter.toFixed(0)}</strong>
               </span>
             </div>
           )}
 
           {/* Two-column body */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', height: `calc(100vh - ${currentRound > 1 && lastResult ? '100px' : '64px'})` }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '40% 60%', height: `calc(100vh - ${currentRound > 1 && lastResult ? '100px' : '64px'})` }}>
 
             {/* LEFT: livestock selection ? collapses during locking */}
             <div style={{ borderRight: '1px solid #E8D9C8', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
@@ -1609,7 +1933,7 @@ export default function LandingV2() {
                 <div>
                   <div style={{ fontFamily: '"Playfair Display", serif', fontSize: '20px', fontWeight: 700, color: '#2C1810' }}>Your Farm Preview</div>
                   <div style={{ fontFamily: '"Lora", serif', fontSize: '12px', color: '#8B6B50', marginTop: '2px' }}>
-                    {currentRound === 1 ? 'A world awaits your decisions' : `Round ${currentRound} ? next skip: ${roundSkipLabel}`}
+                    {currentRound === 1 ? 'A world awaits your decisions' : `Round ${currentRound} \u00B7 next skip: ${roundSkipLabel}`}
                   </div>
                 </div>
                 <span style={{ fontFamily: '"Lora", serif', fontSize: '12px', color: '#C4622D' }}>
@@ -1646,7 +1970,6 @@ export default function LandingV2() {
                       )
                     })}
                   </div>
-                    <StrategyAdvisor portfolio={buildPortfolioItems()} currentValue={portfolioValue} round={currentRound} />
                   <button
                     disabled={isLocking || csvLoading}
                     onClick={handleLock}

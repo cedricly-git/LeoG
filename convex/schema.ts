@@ -17,6 +17,17 @@ export default defineSchema({
     completedAt: v.optional(v.number()),
     finalPortfolioValue: v.optional(v.number()),
     totalPnl: v.optional(v.number()),
+    aiRecap: v.optional(v.object({
+      summary: v.string(),
+      riskProfiling: v.string(),
+      diversification: v.string(),
+      longTermInvesting: v.string(),
+      assetClasses: v.string(),
+      topTip: v.string(),
+      archetype: v.string(),
+      overallScore: v.number(),
+      generatedAt: v.number(),
+    })),
   }).index('by_user', ['userId']),
 
   rounds: defineTable({

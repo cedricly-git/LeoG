@@ -270,6 +270,124 @@ function RoundRow({ round }: { round: RoundData }) {
   )
 }
 
+// ── AiRecapPanel ───────────────────────────────────────────────────────────────
+
+type AiRecap = {
+  summary: string
+  riskProfiling: string
+  diversification: string
+  longTermInvesting: string
+  assetClasses: string
+  topTip: string
+  archetype: string
+  overallScore: number
+  generatedAt: number
+}
+
+function AiRecapPanel({ recap }: { recap: AiRecap }) {
+  const [tab, setTab] = useState<'risk' | 'diversification' | 'longterm' | 'classes'>('risk')
+  const scoreColor = recap.overallScore >= 70 ? '#16a34a' : recap.overallScore >= 40 ? '#ca8a04' : '#dc2626'
+  const scoreBg    = recap.overallScore >= 70 ? '#f0fdf4' : recap.overallScore >= 40 ? '#fefce8' : '#fef2f2'
+  const scoreBorder = recap.overallScore >= 70 ? '#86efac' : recap.overallScore >= 40 ? '#fde047' : '#fca5a5'
+
+  return (
+    <div style={{ marginTop: '10px' }}>
+      <div style={{
+        fontFamily: '"Lora", serif', fontSize: '9px', color: '#8B6B50',
+        letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '8px',
+        display: 'flex', alignItems: 'center', gap: '6px',
+      }}>
+        <span>AI Strategy Review</span>
+        <span style={{
+          background: '#f0fdf4', color: '#16a34a', border: '1px solid #86efac',
+          padding: '1px 6px', borderRadius: '3px', fontSize: '9px', fontWeight: 600,
+        }}>GPT-4o</span>
+      </div>
+
+      <div style={{
+        borderRadius: '10px', overflow: 'hidden',
+        border: '1px solid #E8D9C8', background: 'white',
+      }}>
+        {/* Header */}
+        <div style={{
+          padding: '12px 14px',
+          background: 'linear-gradient(135deg, #f8f4ee, #fff)',
+          borderBottom: '1px solid #EDE3D3',
+          display: 'flex', alignItems: 'flex-start', gap: '12px',
+        }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{
+              fontFamily: '"Playfair Display", serif', fontSize: '13px',
+              fontWeight: 900, color: '#2C1810', marginBottom: '4px',
+            }}>{recap.archetype}</div>
+            <div style={{
+              fontFamily: '"Lora", serif', fontSize: '11px',
+              color: '#6B5040', lineHeight: '1.5',
+            }}>{recap.summary}</div>
+          </div>
+          <div style={{
+            flexShrink: 0, textAlign: 'center',
+            padding: '6px 10px', borderRadius: '8px',
+            background: scoreBg, border: `1px solid ${scoreBorder}`,
+          }}>
+            <div style={{ fontFamily: '"Playfair Display", serif', fontSize: '22px', fontWeight: 900, color: scoreColor, lineHeight: 1 }}>
+              {recap.overallScore}
+            </div>
+            <div style={{ fontFamily: '"Lora", serif', fontSize: '9px', color: scoreColor, letterSpacing: '1px', textTransform: 'uppercase' }}>score</div>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display: 'flex', borderBottom: '1px solid #EDE3D3' }}>
+          {([
+            { key: 'risk',            label: 'Risk' },
+            { key: 'diversification', label: 'Diversif.' },
+            { key: 'longterm',        label: 'Long-term' },
+            { key: 'classes',         label: 'Assets' },
+          ] as const).map(t => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              style={{
+                flex: 1, padding: '7px 2px', border: 'none', cursor: 'pointer',
+                background: tab === t.key ? '#faf4e8' : 'transparent',
+                borderBottom: tab === t.key ? '2px solid #2D6A4F' : '2px solid transparent',
+                fontFamily: '"Lora", serif', fontSize: '10px',
+                color: tab === t.key ? '#2D6A4F' : '#B89070',
+                transition: 'all 0.15s',
+              }}
+            >{t.label}</button>
+          ))}
+        </div>
+
+        {/* Content */}
+        <div style={{ padding: '12px 14px' }}>
+          <div style={{ fontFamily: '"Lora", serif', fontSize: '11px', color: '#4A3728', lineHeight: '1.6' }}>
+            {tab === 'risk'            && recap.riskProfiling}
+            {tab === 'diversification' && recap.diversification}
+            {tab === 'longterm'        && recap.longTermInvesting}
+            {tab === 'classes'         && recap.assetClasses}
+          </div>
+        </div>
+
+        {/* Tip */}
+        <div style={{
+          padding: '10px 14px 12px',
+          borderTop: '1px solid #EDE3D3',
+          background: '#fdfaf5',
+          display: 'flex', gap: '8px', alignItems: 'flex-start',
+        }}>
+          <span style={{ fontSize: '13px', flexShrink: 0 }}>💡</span>
+          <div>
+            <div style={{ fontFamily: '"Lora", serif', fontSize: '9px', color: '#8B6B50', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '3px' }}>Next Season Tip</div>
+            <div style={{ fontFamily: '"Lora", serif', fontSize: '11px', color: '#6B5040', lineHeight: '1.5', fontStyle: 'italic' }}>{recap.topTip}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── GameRow ────────────────────────────────────────────────────────────────────
 
 function GameRow({
@@ -281,6 +399,7 @@ function GameRow({
     status: 'in_progress' | 'complete'
     finalPortfolioValue?: number
     totalPnl?: number
+    aiRecap?: AiRecap
   }
   isExpanded: boolean
   onToggle: () => void
@@ -450,6 +569,11 @@ function GameRow({
                     }}>{formatVal(game.finalPortfolioValue)}</span>
                   </div>
                 </div>
+              )}
+
+              {/* AI Recap */}
+              {isComplete && game.aiRecap && (
+                <AiRecapPanel recap={game.aiRecap} />
               )}
             </div>
           )}

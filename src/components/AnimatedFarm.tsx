@@ -209,6 +209,96 @@ export function AnimatedFarm({ selected, animalNames, animalCats, imageMap, pixe
       ctx.fillStyle = g; ctx.fillRect(0, 0, W, SKY_H)
     }
 
+    function drawAlpsMountain() {
+      if (!ctx) return
+      const base = SKY_H + 2
+
+      // Distant ridge (lightest, atmospheric haze)
+      ctx.fillStyle = '#C2D5E2'
+      ctx.beginPath(); ctx.moveTo(290, base); ctx.lineTo(345, base - 32); ctx.lineTo(400, base); ctx.closePath(); ctx.fill()
+
+      // Left secondary peak (mid distance)
+      ctx.fillStyle = '#90AEBB'
+      ctx.beginPath(); ctx.moveTo(180, base); ctx.lineTo(242, base - 50); ctx.lineTo(305, base); ctx.closePath(); ctx.fill()
+      // Right face shading
+      ctx.fillStyle = '#7A9AAA'
+      ctx.beginPath(); ctx.moveTo(242, base - 50); ctx.lineTo(305, base); ctx.lineTo(274, base); ctx.closePath(); ctx.fill()
+
+      // Main tall peak (foremost)
+      ctx.fillStyle = '#7A9AAA'
+      ctx.beginPath(); ctx.moveTo(222, base); ctx.lineTo(298, base - 78); ctx.lineTo(374, base); ctx.closePath(); ctx.fill()
+      // Right face shadow
+      ctx.fillStyle = '#5C7D8E'
+      ctx.beginPath(); ctx.moveTo(298, base - 78); ctx.lineTo(374, base); ctx.lineTo(336, base); ctx.closePath(); ctx.fill()
+      // Left face highlight stripe
+      ctx.fillStyle = '#8CB0BF'
+      ctx.beginPath(); ctx.moveTo(298, base - 78); ctx.lineTo(222, base); ctx.lineTo(250, base); ctx.closePath(); ctx.fill()
+
+      // Snow caps
+      ctx.fillStyle = '#EDF2F6'
+      // Main peak
+      ctx.beginPath(); ctx.moveTo(276, base - 62); ctx.lineTo(298, base - 78); ctx.lineTo(320, base - 62); ctx.closePath(); ctx.fill()
+      // Left peak
+      ctx.beginPath(); ctx.moveTo(230, base - 40); ctx.lineTo(242, base - 50); ctx.lineTo(254, base - 40); ctx.closePath(); ctx.fill()
+      // Distant ridge
+      ctx.beginPath(); ctx.moveTo(337, base - 24); ctx.lineTo(345, base - 32); ctx.lineTo(353, base - 24); ctx.closePath(); ctx.fill()
+
+      // Bright snow highlight on main peak tip
+      ctx.fillStyle = '#FFFFFF'
+      ctx.beginPath(); ctx.moveTo(294, base - 70); ctx.lineTo(298, base - 78); ctx.lineTo(302, base - 70); ctx.closePath(); ctx.fill()
+
+      // Snow ledge lines on main peak (pixel art texture)
+      ctx.fillStyle = 'rgba(255,255,255,0.45)'
+      ctx.fillRect(264, base - 55, 14, 2)
+      ctx.fillRect(280, base - 48, 10, 2)
+    }
+
+    function drawSwissFlag(tick: number) {
+      if (!ctx) return
+      // Pole: same column as the house (hx = W-62 = 418), top of build zone
+      const px = ZONE_BUILD_X1 + 52  // x≈412, centre-right of build zone
+      const poleTop  = ZONE_Y1 - 42
+      const poleBase = ZONE_Y1 + 4
+
+      // Pole shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.14)'
+      ctx.fillRect(px + 3, poleTop + 6, 2, poleBase - poleTop)
+      // Pole body
+      ctx.fillStyle = '#B0B0B0'; ctx.fillRect(px,     poleTop, 2, poleBase - poleTop)
+      ctx.fillStyle = '#D8D8D8'; ctx.fillRect(px,     poleTop, 1, poleBase - poleTop)
+      // Finial
+      ctx.fillStyle = '#C0C0C0'; ctx.fillRect(px - 1, poleTop - 1, 4, 3)
+      ctx.fillStyle = '#E8E8E8'; ctx.fillRect(px,     poleTop - 2, 2, 2)
+
+      // Gentle flag wave via a subtle horizontal offset per row
+      const fx = px + 2
+      const fy = poleTop
+      const fs = 22
+      const amp = 1.5
+      for (let row = 0; row < fs; row++) {
+        const wave = Math.round(amp * Math.sin(tick * 0.06 + row * 0.35))
+        ctx.fillStyle = '#D52B1E'
+        ctx.fillRect(fx + wave, fy + row, fs, 1)
+      }
+
+      // White cross (pixel-perfect Swiss proportions: cross arm = 6/20 of flag width)
+      for (let row = 0; row < fs; row++) {
+        const wave = Math.round(amp * Math.sin(tick * 0.06 + row * 0.35))
+        const inHBar = row >= 9 && row <= 12
+        ctx.fillStyle = '#FFFFFF'
+        if (inHBar) {
+          ctx.fillRect(fx + wave + 4, fy + row, 14, 1)
+        } else if (row >= 4 && row <= 17) {
+          ctx.fillRect(fx + wave + 9, fy + row, 4, 1)
+        }
+      }
+
+      // Flag edge shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.10)'
+      ctx.fillRect(fx + fs, fy, 1, fs)
+      ctx.fillRect(fx, fy + fs, fs + 1, 1)
+    }
+
     function drawGround() {
       if (!ctx) return
       ctx.fillStyle = '#6BBF5A'; ctx.fillRect(0, SKY_H, W, H - SKY_H)
@@ -360,11 +450,11 @@ export function AnimatedFarm({ selected, animalNames, animalCats, imageMap, pixe
     function frame() {
       if (!ctx) return
       const s = stateRef.current; s.tick++
-      drawSky(); drawGround()
+      drawSky(); drawAlpsMountain(); drawGround()
       for (const cloud of s.clouds) {
         drawCloud(cloud); cloud.x += cloud.speed; if (cloud.x > W + 80) cloud.x = -80
       }
-      drawSun(s.tick); drawTree(24, SKY_H - 10); drawTree(22, SKY_H + 28); drawFence()
+      drawSun(s.tick); drawTree(24, SKY_H - 10); drawTree(22, SKY_H + 28); drawFence(); drawSwissFlag(s.tick)
       // Static critters (plants / buildings) drawn without clipping
       for (const c of s.critters) {
         if (isPlant(c.category) || isBuilding(c.category)) drawCritter(c, 0)

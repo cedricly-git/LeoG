@@ -264,7 +264,7 @@ export function UserProfileScreen({ onBegin }: UserProfileScreenProps) {
                   fontSize: '24px', fontWeight: 700, color: '#2C1810',
                   marginBottom: '6px',
                 }}>
-                  {isReturning ? 'Ready to play again?' : 'Name your farmer'}
+                  {isReturning ? 'Ready to play again' : 'Name your farmer'}
                 </div>
                 <div style={{
                   fontFamily: '"Lora", serif', fontSize: '13px', color: '#8B6B50',
