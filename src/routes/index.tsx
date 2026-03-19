@@ -71,7 +71,7 @@ import PixelPig from '../../Images/PixelArts/pixelpig.png'
 import PixelHorse from '../../Images/PixelArts/pixelhorse.png'
 import PixelCow from '../../Images/PixelArts/Pixelcow1.png'
 import PixelTool from '../../Images/PixelArts/Pixeltool.jpg'
-import PixelHouse from '../../Images/PixelArts/Pixelhouse_1.jpg'
+import PixelHouse from '../../Images/PixelArts/pixelhouse.png'
 
 export const Route = createFileRoute('/')({
   component: LandingV2,
