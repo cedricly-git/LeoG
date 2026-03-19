@@ -146,3 +146,17 @@ export function getContainedRect(
 export function shouldUseImportedPixelArt(category: string) {
   return IMPORTED_PIXEL_ART_CATEGORIES.has(category)
 }
+
+export function getPixelArtScaleMultiplier(category: string) {
+  if (category === 'Pig') return 1.1
+  if (category === 'Guard Dog') return 1.1
+  if (category === 'Collective') return 1.14
+  return 1
+}
+
+export function getPixelArtBoxSize(category: string, defaultSize: number) {
+  if (category === 'Pig') return 42
+  if (category === 'Guard Dog') return 42
+  if (category === 'Collective') return 48
+  return defaultSize
+}

@@ -5,7 +5,14 @@
 
 import { useEffect, useRef, useCallback } from 'react'
 import { PIXEL_SPRITES } from './PixelAnimal'
-import { getContainedRect, getPixelArtDrawable, preloadPixelArt, shouldUseImportedPixelArt } from '../lib/pixelArt'
+import {
+  getPixelArtBoxSize,
+  getContainedRect,
+  getPixelArtDrawable,
+  getPixelArtScaleMultiplier,
+  preloadPixelArt,
+  shouldUseImportedPixelArt,
+} from '../lib/pixelArt'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -318,7 +325,10 @@ export function AnimatedFarm({ selected, animalNames, animalCats, imageMap, pixe
 
     function drawCritter(c: Critter, bob: number) {
       if (!ctx) return
-      const sz = SPRITE_SZ, dx = Math.round(c.x), dy = Math.round(c.y + bob)
+      const baseSize = SPRITE_SZ
+      const sz = getPixelArtBoxSize(c.category, baseSize)
+      const dx = Math.round(c.x - (sz - baseSize) / 2)
+      const dy = Math.round(c.y + bob - (sz - baseSize) / 2)
       if (!shouldUseImportedPixelArt(c.category) && PIXEL_SPRITES[c.name]) {
         const img = getSvgImg(c.name, sz, c.flip)
         if (img.complete && img.naturalWidth > 0) {
@@ -334,7 +344,7 @@ export function AnimatedFarm({ selected, animalNames, animalCats, imageMap, pixe
         if (img && isReady) {
           const naturalWidth = img instanceof HTMLCanvasElement ? img.width : img.naturalWidth
           const naturalHeight = img instanceof HTMLCanvasElement ? img.height : img.naturalHeight
-          const scaleMultiplier = c.category === 'Collective' ? 1.12 : 1
+          const scaleMultiplier = getPixelArtScaleMultiplier(c.category)
           const target = getContainedRect(naturalWidth, naturalHeight, dx, dy, sz, scaleMultiplier)
           ctx.save()
           ctx.imageSmoothingEnabled = false

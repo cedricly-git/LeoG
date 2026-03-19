@@ -66,12 +66,12 @@ import RiceImg from '../../Images/Cereals/Rice.jpg'
 import GoldImg from '../../Images/Hedge/Gold.jpg'
 import SilverImg from '../../Images/Hedge/Silver.jpg'
 // ?? Pixel Arts ????????????????????????????????????????????????????????????????
-import PixelDog from '../../Images/PixelArts/Pixeldog.png'
-import PixelPig from '../../Images/PixelArts/Pixelpig.png'
+import PixelDog from '../../Images/PixelArts/Pixeldog_1.jpg'
+import PixelPig from '../../Images/PixelArts/Pixelpig_1.jpg'
 import PixelHorse from '../../Images/PixelArts/Pixelhorse.jpg'
 import PixelCow from '../../Images/PixelArts/Pixelcow1.png'
 import PixelTool from '../../Images/PixelArts/Pixeltool.jpg'
-import PixelHouse from '../../Images/PixelArts/Pixelhouse.png'
+import PixelHouse from '../../Images/PixelArts/Pixelhouse_1.jpg'
 
 export const Route = createFileRoute('/')({
   component: LandingV2,
