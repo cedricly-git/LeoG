@@ -238,21 +238,21 @@ const cryptoMappings: Record<string, AnimalMapping> = {
     animalCategory: 'Tool',
     image: null,
     sector: 'Crypto',
-    multiplier: 4,
+    multiplier: 1,
   },
   Solana: {
     animal: 'Axe',
     animalCategory: 'Tool',
     image: null,
     sector: 'Crypto',
-    multiplier: 8,
+    multiplier: 1,
   },
   Dogecoin: {
     animal: 'Chainsaw',
     animalCategory: 'Tool',
     image: null,
     sector: 'Crypto',
-    multiplier: 12,
+    multiplier: 1,
   },
 }
 

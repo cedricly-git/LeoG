@@ -2,9 +2,9 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useState, useEffect, useRef } from 'react'
 import { PixelAnimal, PIXEL_SPRITES } from '../components/PixelAnimal'
 import { ASSET_ANIMAL_MAP, type AnimalCategory } from '../data/assetAnimalMapping'
-import { loadAllCsvData, type CsvDataMap } from '../lib/csvLoader'
+import { loadAllCsvData, type CsvDataMap, type MultiplierMap } from '../lib/csvLoader'
 import {
-  SESSION_START_DATE, TOTAL_ROUNDS,
+  SESSION_START_DATE, TOTAL_ROUNDS, UNIT_COST,
   rollTimeSkips, rollEventIndices,
   advanceDate, getTimeSkipLabel,
   calculateRoundPnl,
@@ -371,8 +371,9 @@ export default function LandingV2() {
   const [gamePhase, setGamePhase]   = useState<GamePhase>('selection')
 
   // CSV data
-  const [csvData, setCsvData]       = useState<CsvDataMap | null>(null)
-  const [csvLoading, setCsvLoading] = useState(true)
+  const [csvData, setCsvData]             = useState<CsvDataMap | null>(null)
+  const [multiplierMap, setMultiplierMap] = useState<MultiplierMap>(new Map())
+  const [csvLoading, setCsvLoading]       = useState(true)
 
   // Round system
   const [currentRound, setCurrentRound]       = useState(1)
@@ -386,16 +387,20 @@ export default function LandingV2() {
   // Round-active animation step: 'time-skip' ? 'event'
   const [activeStep, setActiveStep] = useState<'time-skip' | 'event'>('time-skip')
 
-  // Budget: $1000 for round 1, then carry-over value (floored to $100 increments)
-  const budget     = currentRound === 1 ? 1000 : Math.floor(portfolioValue / 100) * 100
+  // Budget: $1000 for round 1, then carry-over value (floored to nearest unit cost)
+  const budget     = currentRound === 1 ? 1000 : Math.floor(portfolioValue / UNIT_COST) * UNIT_COST
   const totalUnits = Object.values(selected).reduce((a, b) => a + b, 0)
-  const spent      = totalUnits * 100
+  const spent      = totalUnits * UNIT_COST
 
   // Load all CSV data on mount
   useEffect(() => {
     loadAllCsvData()
-      .then(data => { setCsvData(data); setCsvLoading(false) })
-      .catch(err  => { console.error('CSV load error:', err); setCsvLoading(false) })
+      .then(({ csvData: data, multiplierMap: mmap }) => {
+        setCsvData(data)
+        setMultiplierMap(mmap)
+        setCsvLoading(false)
+      })
+      .catch(err => { console.error('CSV load error:', err); setCsvLoading(false) })
   }, [])
 
   function adjust(id: string, delta: number) {
@@ -404,7 +409,7 @@ export default function LandingV2() {
       const next = Math.max(0, curr + delta)
       // Budget cap: reject if adding would exceed budget
       if (delta > 0) {
-        const newSpent = Object.entries(prev).reduce((s, [k, v]) => s + (k === id ? next : v) * 100, 0)
+        const newSpent = Object.entries(prev).reduce((s, [k, v]) => s + (k === id ? next : v) * UNIT_COST, 0)
         if (newSpent > budget) return prev
       }
       if (next === 0) { const { [id]: _, ...rest } = prev; return rest }
@@ -455,26 +460,27 @@ export default function LandingV2() {
     if (gamePhase !== 'round-active') return
     setActiveStep('time-skip')
     const t1 = setTimeout(() => setActiveStep('event'), 2000)
-    const t2 = setTimeout(() => {
-      // Calculate P&L for this round
-      if (!csvData) { setGamePhase('round-recap'); return }
-      const roundIdx  = currentRound - 1
-      const skipDays  = roundTimeSkips[roundIdx] ?? 30
-      const eventId   = roundEventIds[roundIdx]  ?? 1
-      const startDate = currentCsvDate
-      const endDate   = advanceDate(currentCsvDate, skipDays)
-      const portfolio = buildPortfolioItems()
-      const result    = calculateRoundPnl(
-        currentRound, eventId, portfolio,
-        startDate, endDate, skipDays,
-        csvData, portfolioValue,
-      )
-      setCurrentResult(result)
-      setGamePhase('round-recap')
-    }, 4200)
-    return () => { clearTimeout(t1); clearTimeout(t2) }
+    return () => { clearTimeout(t1) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gamePhase])
+
+  function handleEventContinue() {
+    if (!csvData) { setGamePhase('round-recap'); return }
+    const roundIdx  = currentRound - 1
+    const skipDays  = roundTimeSkips[roundIdx] ?? 30
+    const eventId   = roundEventIds[roundIdx]  ?? 1
+    const startDate = currentCsvDate
+    const endDate   = advanceDate(currentCsvDate, skipDays)
+    const portfolio = buildPortfolioItems()
+    const event     = getEventById(eventId)
+    const result    = calculateRoundPnl(
+      currentRound, event, portfolio,
+      startDate, endDate, skipDays,
+      csvData, multiplierMap, portfolioValue,
+    )
+    setCurrentResult(result)
+    setGamePhase('round-recap')
+  }
 
   function handleRoundComplete() {
     if (!currentResult) return
@@ -687,33 +693,100 @@ export default function LandingV2() {
 
           {/* Event reveal */}
           {activeStep === 'event' && (
-            <div className="slide-up" style={{ animationDelay: '0s', textAlign: 'center', maxWidth: '480px', width: '100%' }}>
-              <div style={{
-                fontFamily: '"Lora", serif', fontSize: '11px',
-                color: '#A8D5B870', letterSpacing: '3px', textTransform: 'uppercase',
-                marginBottom: '16px',
-              }}>Unexpected Event ? Roll {roundEventIds[currentRound - 1]}/12</div>
-              <div style={{
-                background: `${currentEvent.color}10`,
-                border: `1.5px solid ${currentEvent.color}40`,
-                borderRadius: '8px', padding: '28px 32px',
-                boxShadow: `0 8px 40px ${currentEvent.color}20`,
-              }}>
-                <div style={{ fontSize: '40px', marginBottom: '12px' }}>{currentEvent.icon}</div>
+            <div className="slide-up" style={{ animationDelay: '0s', textAlign: 'center', maxWidth: '560px', width: '100%' }}>
+              {/* Header label */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '16px' }}>
                 <div style={{
-                  fontFamily: '"Playfair Display", serif', fontSize: '22px',
-                  fontWeight: 700, color: '#FAF4E8', marginBottom: '12px',
-                }}>{currentEvent.title}</div>
+                  fontFamily: '"Lora", serif', fontSize: '10px',
+                  color: '#A8D5B870', letterSpacing: '3px', textTransform: 'uppercase',
+                }}>Unexpected Event</div>
+                <div style={{
+                  background: currentEvent.isPositive ? 'rgba(74,222,128,0.15)' : 'rgba(248,113,113,0.15)',
+                  border: `1px solid ${currentEvent.isPositive ? 'rgba(74,222,128,0.4)' : 'rgba(248,113,113,0.4)'}`,
+                  borderRadius: '4px', padding: '2px 10px',
+                  fontFamily: '"Lora", serif', fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase',
+                  color: currentEvent.isPositive ? '#4ade80' : '#f87171', fontWeight: 600,
+                }}>{currentEvent.isPositive ? '? Positive' : '? Negative'}</div>
+              </div>
+
+              {/* Main card */}
+              <div style={{
+                background: `${currentEvent.color}12`,
+                border: `1.5px solid ${currentEvent.color}50`,
+                borderRadius: '10px', padding: '28px 32px',
+                boxShadow: `0 8px 48px ${currentEvent.color}25`,
+                textAlign: 'left',
+              }}>
+                {/* Icon + title row */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', marginBottom: '16px' }}>
+                  <div style={{ fontSize: '38px', lineHeight: 1, flexShrink: 0 }}>{currentEvent.icon}</div>
+                  <div>
+                    <div style={{
+                      fontFamily: '"Playfair Display", serif', fontSize: '20px',
+                      fontWeight: 700, color: '#FAF4E8', lineHeight: 1.25, marginBottom: '6px',
+                    }}>{currentEvent.title}</div>
+                    <div style={{
+                      display: 'inline-block',
+                      background: `${currentEvent.color}20`, border: `1px solid ${currentEvent.color}40`,
+                      borderRadius: '4px', padding: '2px 10px',
+                      fontFamily: '"Lora", serif', fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase',
+                      color: `${currentEvent.color}DD`,
+                    }}>{currentEvent.impactLabel}</div>
+                  </div>
+                </div>
+
+                {/* Divider */}
+                <div style={{ height: '1px', background: `${currentEvent.color}25`, marginBottom: '16px' }} />
+
+                {/* Description */}
                 <div style={{
                   fontFamily: '"Lora", serif', fontSize: '14px',
-                  color: '#A8D5B8B0', lineHeight: 1.7, fontStyle: 'italic',
+                  color: '#D4C9B4', lineHeight: 1.8,
                 }}>{currentEvent.description}</div>
+
+                {/* Affected assets */}
+                <div style={{ marginTop: '20px' }}>
+                  <div style={{
+                    fontFamily: '"Lora", serif', fontSize: '10px',
+                    color: '#A8D5B860', letterSpacing: '2px', textTransform: 'uppercase',
+                    marginBottom: '8px',
+                  }}>Assets Affected</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {currentEvent.affectedAnimalNames.map(name => (
+                      <span key={name} style={{
+                        background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
+                        borderRadius: '4px', padding: '3px 10px',
+                        fontFamily: '"Lora", serif', fontSize: '11px', color: '#A8D5B8CC',
+                      }}>{name}</span>
+                    ))}
+                  </div>
+                </div>
               </div>
-              <div className="fade-in" style={{
-                marginTop: '20px', fontFamily: '"Lora", serif', fontSize: '11px',
-                color: '#A8D5B850', letterSpacing: '2px',
-                animationDelay: '0.5s',
-              }}>Calculating results?</div>
+
+              {/* Continue button */}
+              <div className="fade-in" style={{ marginTop: '28px', animationDelay: '0.4s' }}>
+                <button
+                  onClick={handleEventContinue}
+                  style={{
+                    background: currentEvent.isPositive
+                      ? 'linear-gradient(135deg, #2D6A4F, #1a4a35)'
+                      : 'linear-gradient(135deg, #7C2D12, #4a1508)',
+                    border: `1.5px solid ${currentEvent.isPositive ? 'rgba(74,222,128,0.4)' : 'rgba(248,113,113,0.4)'}`,
+                    borderRadius: '6px', padding: '14px 40px',
+                    fontFamily: '"Lora", serif', fontSize: '13px', letterSpacing: '2px',
+                    textTransform: 'uppercase', color: '#FAF4E8', cursor: 'pointer',
+                    fontWeight: 600, transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLButtonElement).style.opacity = '0.9' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLButtonElement).style.opacity = '1' }}
+                >
+                  See Results ?
+                </button>
+                <div style={{
+                  marginTop: '10px', fontFamily: '"Lora", serif', fontSize: '10px',
+                  color: '#A8D5B840', letterSpacing: '1px',
+                }}>Take your time ? press when ready</div>
+              </div>
             </div>
           )}
         </div>
@@ -811,7 +884,15 @@ export default function LandingV2() {
                         </div>
                         <div style={{ fontFamily: '"Lora", serif', fontSize: '11px', color: '#8B6B50' }}>
                           {r.assetName} ? {r.units} unit{r.units !== 1 ? 's' : ''}
-                          {r.multiplier !== 1 && <span style={{ color: '#6D28D9', marginLeft: '4px' }}>?{r.multiplier}</span>}
+                          {r.isEventAffected && (
+                            <span style={{
+                              color: r.eventBonusPct >= 0 ? '#16a34a' : '#dc2626',
+                              marginLeft: '6px',
+                              fontWeight: 600,
+                            }}>
+                              {currentEvent.icon} {r.eventBonusPct >= 0 ? '+' : ''}{(r.eventBonusPct * 100).toFixed(2)}%
+                            </span>
+                          )}
                         </div>
                         {r.startPrice != null && r.endPrice != null && (
                           <div style={{ fontFamily: '"Lora", serif', fontSize: '10px', color: '#B89070', marginTop: '2px' }}>
@@ -1089,7 +1170,7 @@ export default function LandingV2() {
                 {formatPnl(lastResult.totalPnl)} ({formatPct(lastResult.totalPnl / lastResult.portfolioValueBefore)})
               </span>
               <span style={{ color: '#8B6B50' }}>
-                · Portfolio: <strong>${lastResult.portfolioValueAfter.toFixed(0)}</strong>
+                ? Portfolio: <strong>${lastResult.portfolioValueAfter.toFixed(0)}</strong>
               </span>
             </div>
           )}
