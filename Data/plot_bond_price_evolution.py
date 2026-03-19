@@ -34,6 +34,14 @@ def main() -> None:
         color="#1f5aa6",
         linewidth=1.2,
     )
+    g.map_dataframe(
+        sns.scatterplot,
+        x="date",
+        y="close",
+        color="#1f5aa6",
+        s=10,
+        linewidth=0,
+    )
     g.set_axis_labels("Date", "Close")
     g.set_titles("{col_name}")
     for ax in g.axes.flat:
