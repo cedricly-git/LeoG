@@ -662,8 +662,6 @@ export function ProfilePanel({ userId, userName, onClose, financialUnlocked, onU
           </button>
         </div>
 
-        {/* Stripe */}
-        <div style={{ height: '3px', flexShrink: 0, background: 'repeating-linear-gradient(90deg, #C4622D 0, #C4622D 20px, #2D6A4F 20px, #2D6A4F 40px)' }} />
 
         {/* Body */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>

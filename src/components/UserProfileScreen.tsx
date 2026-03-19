@@ -184,8 +184,6 @@ export function UserProfileScreen({ onBegin }: UserProfileScreenProps) {
         </div>
       </div>
 
-      {/* Striped band */}
-      <div style={{ height: '4px', background: 'repeating-linear-gradient(90deg, #C4622D 0, #C4622D 20px, #2D6A4F 20px, #2D6A4F 40px)', flexShrink: 0 }} />
 
       {/* Main content */}
       <div style={{
