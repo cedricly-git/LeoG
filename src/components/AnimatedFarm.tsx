@@ -507,7 +507,7 @@ export function AnimatedFarm({ selected, animalNames, animalCats, imageMap, pixe
       width={W}
       height={H}
       style={{
-        width: '100%', maxWidth: `${W}px`, aspectRatio: '4/3',
+        width: '100%', maxWidth: `${W * 1.25}px`, aspectRatio: '4/3',
         border: '3px solid #2C1810', borderRadius: '4px',
         boxShadow: '8px 8px 0 rgba(44,24,16,0.28)',
         imageRendering: 'pixelated', display: 'block',
