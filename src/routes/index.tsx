@@ -3,12 +3,13 @@ import { useState, useEffect, useCallback } from 'react'
 import { useMutation } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
-import { PixelAnimal, PIXEL_SPRITES } from '../components/PixelAnimal'
+import { PixelAnimal } from '../components/PixelAnimal'
 import { AnimatedFarm } from '../components/AnimatedFarm'
 import { StrategyAdvisor } from '../components/StrategyAdvisor'
 import { UserProfileScreen } from '../components/UserProfileScreen'
 import { ASSET_ANIMAL_MAP, type AnimalCategory } from '../data/assetAnimalMapping'
 import { loadAllCsvData, type CsvDataMap, type MultiplierMap } from '../lib/csvLoader'
+import { shouldUseImportedPixelArt } from '../lib/pixelArt'
 import {
   SESSION_START_DATE, TOTAL_ROUNDS, UNIT_COST,
   rollTimeSkips, pickEventsForRound,
@@ -61,11 +62,13 @@ import HammerImg from '../../Images/Tools/Hammer.jpg'
 import AxeImg from '../../Images/Tools/Axe.jpg'
 import ChainsawImg from '../../Images/Tools/Chainsaw.jpg'
 import RiceImg from '../../Images/Cereals/Rice.jpg'
+// ?? Hedge ?????????????????????????????????????????????????????????????????????
+import GoldImg from '../../Images/Hedge/Gold.jpg'
+import SilverImg from '../../Images/Hedge/Silver.jpg'
 // ?? Pixel Arts ????????????????????????????????????????????????????????????????
-import PixelPig from '../../Images/PixelArts/Pixelpig.jpeg'
-import PixelDog from '../../Images/PixelArts/Pixeldog.jpeg'
-import PixelHorse from '../../Images/PixelArts/Pixelhorse.jpeg'
-import PixelCow from '../../Images/PixelArts/Pixelcow.jpeg'
+import PixelPig from '../../Images/PixelArts/Pixelpig.png'
+import PixelHorse from '../../Images/PixelArts/Pixelhorse.png'
+import PixelCow from '../../Images/PixelArts/Pixelcow1.png'
 
 export const Route = createFileRoute('/')({
   component: LandingV2,
@@ -117,13 +120,15 @@ const IMAGE_MAP: Record<string, string> = {
   'Axe': AxeImg,
   'Chainsaw': ChainsawImg,
   'Rice': RiceImg,
+  // Hedge
+  'Gold': GoldImg,
+  'Silver': SilverImg,
 }
 
 // Pixel art fallback map ? used in AnimatedFarm canvas for categories
 // that don't have per-breed pixel sprites yet
 const PIXEL_IMAGE_MAP: Record<string, string> = {
   'Pig': PixelPig,
-  'Guard Dog': PixelDog,
   'Horse': PixelHorse,
   'Bovine': PixelCow,
 }
@@ -326,7 +331,7 @@ function AnimalCard({
           color: '#6B4E37', lineHeight: 1.7, fontStyle: 'italic',
         }}>
           <strong style={{ fontStyle: 'normal' }}>{animal.animalName}</strong> represents{' '}
-          <strong style={{ fontStyle: 'normal' }}>{animal.assetName}</strong> ? a{' '}
+          <strong style={{ fontStyle: 'normal' }}>{animal.assetName}</strong>, a{' '}
           {animal.sectorLabel.toLowerCase()} asset. Its performance in the game mirrors
           real historical price data from the markets.
         </div>
@@ -394,7 +399,7 @@ function LockOverlay({ phase, round }: { phase: GamePhase; round: number }) {
             fontFamily: '"Lora", serif', fontSize: '12px',
             color: '#A8D5B8', letterSpacing: '4px', textTransform: 'uppercase',
             marginTop: '8px',
-          }}>of {TOTAL_ROUNDS} ? The Harvest Begins</div>
+          }}>of {TOTAL_ROUNDS} · The Harvest Begins</div>
         </div>
       )}
     </div>
@@ -805,7 +810,7 @@ export default function LandingV2() {
               background: 'rgba(245,200,66,0.06)', border: '1px solid rgba(245,200,66,0.2)',
               borderRadius: '8px', padding: '24px 40px',
             }}>
-              <span style={{ fontSize: '36px' }}>??</span>
+              <span style={{ fontSize: '36px' }}>⏳</span>
               <div style={{ textAlign: 'left' }}>
                 <div style={{
                   fontFamily: '"Lora", serif', fontSize: '11px',
@@ -817,7 +822,7 @@ export default function LandingV2() {
                   fontWeight: 700, color: '#F5C842',
                 }}>
                   {activeStep === 'time-skip'
-                    ? <span className="dice-flicker">Rolling?</span>
+                    ? <span className="dice-flicker">Rolling...</span>
                     : roundSkipLabel}
                 </div>
                 {(activeStep === 'event-1' || activeStep === 'event-2') && (
@@ -825,7 +830,7 @@ export default function LandingV2() {
                     fontFamily: '"Lora", serif', fontSize: '12px',
                     color: '#A8D5B8', marginTop: '4px',
                   }}>
-                    {formatMonthYear(currentCsvDate)} ? {formatMonthYear(advanceDate(currentCsvDate, roundSkipDays))}
+                    {formatMonthYear(currentCsvDate)} → {formatMonthYear(advanceDate(currentCsvDate, roundSkipDays))}
                   </div>
                 )}
               </div>
@@ -852,7 +857,7 @@ export default function LandingV2() {
                     borderRadius: '4px', padding: '2px 10px',
                     fontFamily: '"Lora", serif', fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase',
                     color: ev.isPositive ? '#4ade80' : '#f87171', fontWeight: 600,
-                  }}>{ev.isPositive ? '? Positive' : '? Negative'}</div>
+                  }}>{ev.isPositive ? 'Positive' : 'Negative'}</div>
                 </div>
 
                 {/* Main card */}
@@ -922,12 +927,12 @@ export default function LandingV2() {
                     onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLButtonElement).style.opacity = '0.9' }}
                     onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLButtonElement).style.opacity = '1' }}
                   >
-                    {isLast ? 'See Results ?' : 'Next Event ?'}
+                    {isLast ? 'See Results' : 'Next Event'}
                   </button>
                   <div style={{
                     marginTop: '10px', fontFamily: '"Lora", serif', fontSize: '10px',
                     color: '#A8D5B840', letterSpacing: '1px',
-                  }}>{isLast ? 'Take your time ? press when ready' : 'One more event to read'}</div>
+                  }}>{isLast ? 'Take your time and press when ready' : 'One more event to read'}</div>
                 </div>
               </div>
             )
@@ -949,7 +954,7 @@ export default function LandingV2() {
               <span style={{
                 fontFamily: '"Playfair Display", serif', fontSize: '20px',
                 fontWeight: 900, color: '#F5C842', letterSpacing: '1px',
-              }}>Round {currentRound} ? Results</span>
+              }}>Round {currentRound} Results</span>
               <span style={{
                 fontFamily: '"Lora", serif', fontSize: '10px',
                 color: '#A8D5B870', letterSpacing: '3px', textTransform: 'uppercase',
@@ -1030,7 +1035,7 @@ export default function LandingV2() {
                           {r.animalName}
                         </div>
                         <div style={{ fontFamily: '"Lora", serif', fontSize: '11px', color: '#8B6B50' }}>
-                          {r.assetName} ? {r.units} unit{r.units !== 1 ? 's' : ''}
+                          {r.assetName} · {r.units} unit{r.units !== 1 ? 's' : ''}
                           {r.isEventAffected && (
                             <span style={{
                               color: r.eventBonusPct >= 0 ? '#16a34a' : '#dc2626',
@@ -1043,7 +1048,7 @@ export default function LandingV2() {
                         </div>
                         {r.startPrice != null && r.endPrice != null && (
                           <div style={{ fontFamily: '"Lora", serif', fontSize: '10px', color: '#B89070', marginTop: '2px' }}>
-                            {r.startPrice.toFixed(2)} ? {r.endPrice.toFixed(2)}
+                            {r.startPrice.toFixed(2)} → {r.endPrice.toFixed(2)}
                           </div>
                         )}
                         {r.startPrice == null && (
@@ -1092,7 +1097,7 @@ export default function LandingV2() {
                 <div style={{ fontFamily: '"Lora", serif', fontSize: '10px', color: '#8B6B50', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '10px' }}>Portfolio Value</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ fontFamily: '"Playfair Display", serif', fontSize: '16px', color: '#8B6B50' }}>${currentResult.portfolioValueBefore.toFixed(0)}</span>
-                  <span style={{ color: '#B89070', fontSize: '14px' }}>?</span>
+                  <span style={{ color: '#B89070', fontSize: '14px' }}>→</span>
                   <span style={{
                     fontFamily: '"Playfair Display", serif', fontSize: '20px', fontWeight: 700,
                     color: currentResult.portfolioValueAfter >= currentResult.portfolioValueBefore ? '#16a34a' : '#dc2626',
@@ -1141,8 +1146,8 @@ export default function LandingV2() {
                 onMouseLeave={e => { e.currentTarget.style.background = '#2D6A4F' }}
               >
                 {currentRound >= TOTAL_ROUNDS
-                  ? 'See Final Results ??'
-                  : `Adjust Portfolio ? Round ${currentRound + 1} ?`}
+                  ? 'See Final Results'
+                  : `Adjust Portfolio · Round ${currentRound + 1}`}
               </button>
             </div>
           </div>
@@ -1161,7 +1166,7 @@ export default function LandingV2() {
               fontFamily: '"Lora", serif', fontSize: '11px',
               color: '#A8D5B870', letterSpacing: '4px', textTransform: 'uppercase',
               marginBottom: '8px',
-            }}>Season One ? Complete</div>
+            }}>Season One Complete</div>
             <div style={{
               fontFamily: '"Playfair Display", serif', fontSize: '48px',
               fontWeight: 900, color: '#FAF4E8',
@@ -1248,7 +1253,7 @@ export default function LandingV2() {
             onMouseEnter={e => { e.currentTarget.style.background = '#3A8A63' }}
             onMouseLeave={e => { e.currentTarget.style.background = '#2D6A4F' }}
           >
-            {userName ? `Play Again, ${userName} ?` : 'Play Again ? New Season'}
+            {userName ? `Play Again, ${userName}` : 'Play Again · New Season'}
           </button>
         </div>
       )}
@@ -1292,7 +1297,7 @@ export default function LandingV2() {
                     Round <em style={{ color: '#F5C842' }}>{currentRound}</em> of {TOTAL_ROUNDS}
                   </span>
                   <span style={{ fontFamily: '"Lora", serif', fontSize: '11px', color: '#A8D5B880', letterSpacing: '2px', textTransform: 'uppercase' }}>
-                    {userName ? `${userName} ? ` : ''}Adjust Your Farm &middot; Next skip: {roundSkipLabel}
+                    {userName ? `${userName} · ` : ''}Adjust Your Farm · Next skip: {roundSkipLabel}
                   </span>
                 </>
               )}
@@ -1326,7 +1331,7 @@ export default function LandingV2() {
                 {formatPnl(lastResult.totalPnl)} ({formatPct(lastResult.totalPnl / lastResult.portfolioValueBefore)})
               </span>
               <span style={{ color: '#8B6B50' }}>
-                ? Portfolio: <strong>${lastResult.portfolioValueAfter.toFixed(0)}</strong>
+                · Portfolio: <strong>${lastResult.portfolioValueAfter.toFixed(0)}</strong>
               </span>
             </div>
           )}
@@ -1430,7 +1435,7 @@ export default function LandingV2() {
                 <div>
                   <div style={{ fontFamily: '"Playfair Display", serif', fontSize: '20px', fontWeight: 700, color: '#2C1810' }}>Your Farm Preview</div>
                   <div style={{ fontFamily: '"Lora", serif', fontSize: '12px', color: '#8B6B50', marginTop: '2px' }}>
-                    {currentRound === 1 ? 'A world awaits your decisions' : `Round ${currentRound} ? next skip: ${roundSkipLabel}`}
+                    {currentRound === 1 ? 'A world awaits your decisions' : `Round ${currentRound} · next skip: ${roundSkipLabel}`}
                   </div>
                 </div>
                 <span style={{ fontFamily: '"Lora", serif', fontSize: '12px', color: '#C4622D' }}>
@@ -1458,7 +1463,19 @@ export default function LandingV2() {
                       const a = LIVESTOCK.find(l => l.id === id)!
                       return (
                         <span key={id} style={{ fontFamily: '"Lora", serif', fontSize: '11px', padding: '3px 10px', background: '#FFF', border: '1px solid #E8D9C8', borderRadius: '2px', color: '#2C1810', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          {a.image
+                          {shouldUseImportedPixelArt(a.animalCategory) && PIXEL_IMAGE_MAP[a.animalCategory]
+                            ? <img
+                                src={PIXEL_IMAGE_MAP[a.animalCategory]}
+                                alt={a.animalName}
+                                style={{
+                                  width: '16px',
+                                  height: '16px',
+                                  objectFit: 'cover',
+                                  imageRendering: 'pixelated',
+                                  borderRadius: '2px',
+                                }}
+                              />
+                            : a.image
                             ? <PixelAnimal name={a.animalName} size={16} style={{ borderRadius: '2px', background: '#F0E8D4' }} />
                             : <span style={{ fontSize: '12px' }}>{a.emoji}</span>
                           }
@@ -1485,10 +1502,10 @@ export default function LandingV2() {
                     onMouseLeave={e => { if (!isLocking && !csvLoading) e.currentTarget.style.background = '#2D6A4F' }}
                   >
                     {csvLoading
-                      ? 'Loading market data?'
+                      ? 'Loading market data...'
                       : isLocking
-                        ? 'Locking?'
-                        : `Lock Portfolio & Begin Round ${currentRound} ?`}
+                        ? 'Locking...'
+                        : `Lock Portfolio & Begin Round ${currentRound}`}
                   </button>
                 </div>
               )}

@@ -5,6 +5,7 @@
 
 import { useEffect, useRef, useCallback } from 'react'
 import { PIXEL_SPRITES } from './PixelAnimal'
+import { getPixelArtDrawable, preloadPixelArt, shouldUseImportedPixelArt } from '../lib/pixelArt'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -190,11 +191,13 @@ export function AnimatedFarm({ selected, animalNames, animalCats, imageMap, pixe
     stateRef.current = { critters: spawnCritters(entries), clouds: spawnClouds(), tick: 0 }
 
     for (const { name, category } of entries) {
-      if (PIXEL_SPRITES[name]) {
+      if (shouldUseImportedPixelArt(category) && pixelImageMap[category]) {
+        preloadPixelArt(pixelImageMap[category])
+      } else if (PIXEL_SPRITES[name]) {
         getSvgImg(name, SPRITE_SZ, false)
         getSvgImg(name, SPRITE_SZ, true)
       } else if (pixelImageMap[category]) {
-        getUrlImg(pixelImageMap[category])
+        preloadPixelArt(pixelImageMap[category])
       } else if (imageMap[name]) {
         getUrlImg(imageMap[name])
       }
@@ -316,7 +319,7 @@ export function AnimatedFarm({ selected, animalNames, animalCats, imageMap, pixe
     function drawCritter(c: Critter, bob: number) {
       if (!ctx) return
       const sz = SPRITE_SZ, dx = Math.round(c.x), dy = Math.round(c.y + bob)
-      if (PIXEL_SPRITES[c.name]) {
+      if (!shouldUseImportedPixelArt(c.category) && PIXEL_SPRITES[c.name]) {
         const img = getSvgImg(c.name, sz, c.flip)
         if (img.complete && img.naturalWidth > 0) {
           ctx.imageSmoothingEnabled = false; ctx.drawImage(img, dx, dy, sz, sz)
@@ -325,8 +328,10 @@ export function AnimatedFarm({ selected, animalNames, animalCats, imageMap, pixe
       }
       const pixUrl = pixelImageMap[c.category]
       if (pixUrl) {
-        const img = getUrlImg(pixUrl)
-        if (img.complete && img.naturalWidth > 0) {
+        const img = getPixelArtDrawable(pixUrl)
+        const isReady = img instanceof HTMLCanvasElement
+          || (img instanceof HTMLImageElement && img.complete && img.naturalWidth > 0)
+        if (img && isReady) {
           ctx.save()
           ctx.imageSmoothingEnabled = false
           ctx.beginPath(); ctx.rect(dx, dy, sz, sz); ctx.clip()
