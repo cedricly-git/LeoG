@@ -72,6 +72,12 @@ function buildProcessedCanvas(img: HTMLImageElement) {
 
   if (maxX < minX || maxY < minY) return source
 
+  const padding = 16
+  minX = Math.max(0, minX - padding)
+  minY = Math.max(0, minY - padding)
+  maxX = Math.min(width - 1, maxX + padding)
+  maxY = Math.min(height - 1, maxY + padding)
+
   const cropped = document.createElement('canvas')
   cropped.width = maxX - minX + 1
   cropped.height = maxY - minY + 1
@@ -148,15 +154,15 @@ export function shouldUseImportedPixelArt(category: string) {
 }
 
 export function getPixelArtScaleMultiplier(category: string) {
-  if (category === 'Pig') return 1.1
-  if (category === 'Guard Dog') return 1.1
+  if (category === 'Pig') return 0.92
+  if (category === 'Guard Dog') return 0.9
   if (category === 'Collective') return 1.14
   return 1
 }
 
 export function getPixelArtBoxSize(category: string, defaultSize: number) {
-  if (category === 'Pig') return 42
-  if (category === 'Guard Dog') return 42
+  if (category === 'Pig') return 34
+  if (category === 'Guard Dog') return 34
   if (category === 'Collective') return 48
   return defaultSize
 }
