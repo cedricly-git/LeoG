@@ -1,5 +1,6 @@
 export const IMPORTED_PIXEL_ART_CATEGORIES = new Set([
   'Pig',
+  'Guard Dog',
   'Horse',
   'Bovine',
 ])

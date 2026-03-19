@@ -66,8 +66,9 @@ import RiceImg from '../../Images/Cereals/Rice.jpg'
 import GoldImg from '../../Images/Hedge/Gold.jpg'
 import SilverImg from '../../Images/Hedge/Silver.jpg'
 // ?? Pixel Arts ????????????????????????????????????????????????????????????????
+import PixelDog from '../../Images/PixelArts/Pixeldog.png'
 import PixelPig from '../../Images/PixelArts/Pixelpig.png'
-import PixelHorse from '../../Images/PixelArts/Pixelhorse.png'
+import PixelHorse from '../../Images/PixelArts/Pixelhorse.jpg'
 import PixelCow from '../../Images/PixelArts/Pixelcow1.png'
 
 export const Route = createFileRoute('/')({
@@ -129,6 +130,7 @@ const IMAGE_MAP: Record<string, string> = {
 // that don't have per-breed pixel sprites yet
 const PIXEL_IMAGE_MAP: Record<string, string> = {
   'Pig': PixelPig,
+  'Guard Dog': PixelDog,
   'Horse': PixelHorse,
   'Bovine': PixelCow,
 }
