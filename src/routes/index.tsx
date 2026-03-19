@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState, useEffect, useRef } from 'react'
 import { PixelAnimal, PIXEL_SPRITES } from '../components/PixelAnimal'
+import { AnimatedFarm }              from '../components/AnimatedFarm'
 import { ASSET_ANIMAL_MAP, type AnimalCategory } from '../data/assetAnimalMapping'
 import { loadAllCsvData, type CsvDataMap } from '../lib/csvLoader'
 import {
@@ -13,16 +14,52 @@ import {
 } from '../lib/gameEngine'
 import { GAME_EVENTS, getEventById } from '../data/events'
 
+// ── Pigs ──────────────────────────────────────────────────────────────────────
 import BerkshirePig   from '../../Images/Pigs/Berkshirepig.jpg'
 import SwissPig       from '../../Images/Pigs/Swisspig.jpg'
 import MeishanPig     from '../../Images/Pigs/Meishanpig.jpg'
 import HampshirePig   from '../../Images/Pigs/Hampshirepig.jpg'
 import DurocPig       from '../../Images/Pigs/Durocpig.jpg'
+// ── Guard Dogs ────────────────────────────────────────────────────────────────
 import DogueBordeaux  from '../../Images/GuardDogs/Doguedebordeaux.jpg'
 import AmBulldog      from '../../Images/GuardDogs/Americanbulldog.jpg'
 import AmFoxhound     from '../../Images/GuardDogs/Americanfoxhound.jpg'
 import GermanShepherd from '../../Images/GuardDogs/Germanshepherd.jpg'
 import DutchShepherd  from '../../Images/GuardDogs/Dutchshepherd.jpg'
+// ── Horses ────────────────────────────────────────────────────────────────────
+import AmQuarterHorse from '../../Images/Horses/Americanhorse.jpg'
+import MorganHorse    from '../../Images/Horses/Morganhorse.jpg'
+import Mustang        from '../../Images/Horses/Mustang.jpg'
+import TaiwaneseHorse from '../../Images/Horses/Poney.jpg'
+import Saddlebred     from '../../Images/Horses/Saddleberghorse.jpg'
+// ── Cows (Bonds) ──────────────────────────────────────────────────────────────
+import SwissCow       from '../../Images/Cows/Swisscow.jpg'
+import DevonCow       from '../../Images/Cows/Devoncow.jpg'
+import Bison          from '../../Images/Cows/Bison.jpg'
+import Yak            from '../../Images/Cows/Yak.jpg'
+import CharolaisCow   from '../../Images/Cows/Charloraiscow.jpg'
+import FleckviehCow   from '../../Images/Cows/Fleckviehcow.jpg'
+import BrahmanCow     from '../../Images/Cows/Brahmancow.jpg'
+// ── Herbs (Pharma) ────────────────────────────────────────────────────────────
+import Arnica         from '../../Images/Herbs/Arnica.jpg'
+import Gentian        from '../../Images/Herbs/Gentian.jpg'
+import Echinacea      from '../../Images/Herbs/Echinacea.jpg'
+import Rosehip        from '../../Images/Herbs/Rosehip.jpg'
+import ValerianRoot   from '../../Images/Herbs/Valerianroot.jpg'
+// ── Cereals (Commodities) ─────────────────────────────────────────────────────
+import AlpineBarley   from '../../Images/Cereals/Barley.jpg'
+import WhiteWheat     from '../../Images/Cereals/Whitewheat.jpg'
+import WinterWheat    from '../../Images/Cereals/Winterwheat.png'
+import YellowCorn     from '../../Images/Cereals/Corn.jpg'
+// ── Tools (Crypto) ────────────────────────────────────────────────────────────
+import HammerImg      from '../../Images/Tools/Hammer.jpg'
+import AxeImg         from '../../Images/Tools/Axe.jpg'
+import ChainsawImg    from '../../Images/Tools/Chainsaw.jpg'
+// ── Pixel Arts ────────────────────────────────────────────────────────────────
+import PixelPig       from '../../Images/PixelArts/Pixelpig.jpeg'
+import PixelDog       from '../../Images/PixelArts/Pixeldog.jpeg'
+import PixelHorse     from '../../Images/PixelArts/Pixelhorse.jpeg'
+import PixelCow       from '../../Images/PixelArts/Pixelcow.jpeg'
 
 export const Route = createFileRoute('/')({
   component: LandingV2,
@@ -32,16 +69,56 @@ type GamePhase = 'selection' | 'locking' | 'round-active' | 'round-recap' | 'gam
 
 // ?? Image lookup ????????????????????????????????????????????????????????????
 const IMAGE_MAP: Record<string, string> = {
-  'Berkshire Pig':      BerkshirePig,
-  'Swiss Landrace Pig': SwissPig,
-  'Meishan Pig':        MeishanPig,
-  'Hampshire Pig':      HampshirePig,
-  'American Duroc Pig': DurocPig,
-  'Dogue de Bordeaux':  DogueBordeaux,
-  'American Bulldog':   AmBulldog,
-  'American Foxhound':  AmFoxhound,
-  'German Shepherd':    GermanShepherd,
-  'Dutch Shepherd':     DutchShepherd,
+  // Pigs
+  'Berkshire Pig':              BerkshirePig,
+  'Swiss Landrace Pig':         SwissPig,
+  'Meishan Pig':                MeishanPig,
+  'Hampshire Pig':              HampshirePig,
+  'American Duroc Pig':         DurocPig,
+  // Guard Dogs
+  'Dogue de Bordeaux':          DogueBordeaux,
+  'American Bulldog':           AmBulldog,
+  'American Foxhound':          AmFoxhound,
+  'German Shepherd':            GermanShepherd,
+  'Dutch Shepherd':             DutchShepherd,
+  // Horses
+  'American Quarter Horse':     AmQuarterHorse,
+  'Morgan Horse':               MorganHorse,
+  'Mustang':                    Mustang,
+  'Taiwanese Pony':             TaiwaneseHorse,
+  'American Saddlebred':        Saddlebred,
+  // Bonds → Cows
+  'Swiss Cow':                  SwissCow,
+  'American Milking Devon Cow': DevonCow,
+  'Bison':                      Bison,
+  'Yak':                        Yak,
+  'Charolais Cow':              CharolaisCow,
+  'Fleckvieh Cow':              FleckviehCow,
+  'American Brahman Cow':       BrahmanCow,
+  // Herbs (Pharma)
+  'Arnica':                     Arnica,
+  'Gentian':                    Gentian,
+  'Echinacea':                  Echinacea,
+  'Rosehip':                    Rosehip,
+  'Valerian Root':              ValerianRoot,
+  // Cereals (Commodities)
+  'Alpine Barley':              AlpineBarley,
+  'Australian White Wheat':     WhiteWheat,
+  'French Soft Winter Wheat':   WinterWheat,
+  'American Yellow Corn':       YellowCorn,
+  // Tools (Crypto)
+  'Hammer':                     HammerImg,
+  'Axe':                        AxeImg,
+  'Chainsaw':                   ChainsawImg,
+}
+
+// Pixel art fallback map — used in AnimatedFarm canvas for categories
+// that don't have per-breed pixel sprites yet
+const PIXEL_IMAGE_MAP: Record<string, string> = {
+  'Pig':       PixelPig,
+  'Guard Dog': PixelDog,
+  'Horse':     PixelHorse,
+  'Bovine':    PixelCow,
 }
 
 // ?? Per-animal-category display metadata ????????????????????????????????????
@@ -1089,7 +1166,7 @@ export default function LandingV2() {
                 {formatPnl(lastResult.totalPnl)} ({formatPct(lastResult.totalPnl / lastResult.portfolioValueBefore)})
               </span>
               <span style={{ color: '#8B6B50' }}>
-                � Portfolio: <strong>${lastResult.portfolioValueAfter.toFixed(0)}</strong>
+                � Portfolio: <strong>${lastResult.portfolioValueAfter.toFixed(0)}</strong>
               </span>
             </div>
           )}
@@ -1202,7 +1279,13 @@ export default function LandingV2() {
               </div>
 
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px' }}>
-                <FarmCanvas selected={selected} />
+                <AnimatedFarm
+                  selected={selected}
+                  animalNames={Object.fromEntries(LIVESTOCK.map(l => [l.id, l.animalName]))}
+                  animalCats={Object.fromEntries(LIVESTOCK.map(l => [l.id, l.animalCategory]))}
+                  imageMap={IMAGE_MAP}
+                  pixelImageMap={PIXEL_IMAGE_MAP}
+                />
                 <div style={{ marginTop: '12px', fontFamily: '"Lora", serif', fontSize: '11px', color: '#8B6B50', fontStyle: 'italic', textAlign: 'center' }}>
                   Pixel animation will populate based on your portfolio
                 </div>
