@@ -56,6 +56,7 @@ import YellowCorn from '../../Images/Cereals/Corn.jpg'
 import HammerImg from '../../Images/Tools/Hammer.jpg'
 import AxeImg from '../../Images/Tools/Axe.jpg'
 import ChainsawImg from '../../Images/Tools/Chainsaw.jpg'
+import RiceImg from '../../Images/Cereals/Rice.jpg'
 // ── Pixel Arts ────────────────────────────────────────────────────────────────
 import PixelPig from '../../Images/PixelArts/Pixelpig.jpeg'
 import PixelDog from '../../Images/PixelArts/Pixeldog.jpeg'
@@ -111,6 +112,7 @@ const IMAGE_MAP: Record<string, string> = {
   'Hammer': HammerImg,
   'Axe': AxeImg,
   'Chainsaw': ChainsawImg,
+  'Rice': RiceImg,
 }
 
 // Pixel art fallback map — used in AnimatedFarm canvas for categories
