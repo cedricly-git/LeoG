@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useState, useEffect, useRef } from 'react'
 import { PixelAnimal, PIXEL_SPRITES } from '../components/PixelAnimal'
 import { AnimatedFarm } from '../components/AnimatedFarm'
+import { StrategyAdvisor } from '../components/StrategyAdvisor'
 import { ASSET_ANIMAL_MAP, type AnimalCategory } from '../data/assetAnimalMapping'
 import { loadAllCsvData, type CsvDataMap, type MultiplierMap } from '../lib/csvLoader'
 import {
@@ -1116,6 +1117,7 @@ export default function LandingV2() {
               {formatPnl(portfolioValue - 1000)} from $1,000 start ({formatPct((portfolioValue - 1000) / 1000)})
             </div>
           </div>
+            <StrategyAdvisor portfolio={buildPortfolioItems()} currentValue={portfolioValue} round={currentRound} history={roundHistory} isFinal={true} />
 
           {/* Round-by-round summary */}
           <div className="slide-up" style={{ animationDelay: '0.4s', width: '100%', maxWidth: '640px' }}>
@@ -1388,6 +1390,7 @@ export default function LandingV2() {
                       )
                     })}
                   </div>
+                    <StrategyAdvisor portfolio={buildPortfolioItems()} currentValue={portfolioValue} round={currentRound} />
                   <button
                     disabled={isLocking || csvLoading}
                     onClick={handleLock}
