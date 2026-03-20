@@ -1,4 +1,0 @@
-# Data processing and visualization
-matplotlib
-pandas
-seaborn
