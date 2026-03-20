@@ -229,7 +229,7 @@ function spawnExtraClouds(): Cloud[] {
 }
 
 // Generate a zigzag lightning bolt path
-function makeBolt(x: number): number[] {
+function makeBolt(): number[] {
   const segs: number[] = []; let cx = 0
   for (let i = 0; i < 8; i++) { cx += rand(-18, 18); cx = Math.max(-28, Math.min(28, cx)); segs.push(cx) }
   return segs
@@ -948,7 +948,7 @@ export function AnimatedFarm({
         s.lightningCD--
         if (s.lightningCD <= 0) {
           s.boltX    = rand(W * 0.2, W * 0.85)
-          s.boltSegs = makeBolt(s.boltX)
+          s.boltSegs = makeBolt()
           s.boltAge  = 0
           // Brief sky flash
           ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.fillRect(0, 0, W, SKY_H)
