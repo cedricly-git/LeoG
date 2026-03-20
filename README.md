@@ -166,3 +166,6 @@ rounds     → gameId, trades, P&L, assetResults, eventsFired
 ---
 
 Built with love at Starthack 2026.
+
+Lorik Dalloshi, Noah Cline, Cédric Ly
+
