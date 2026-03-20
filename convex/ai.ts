@@ -67,6 +67,9 @@ export const analyzeGame = action({
     topTip: v.string(),
     archetype: v.string(),
     overallScore: v.number(),
+    riskScore: v.number(),
+    diversificationScore: v.number(),
+    longTermScore: v.number(),
     generatedAt: v.number(),
   }),
   handler: async (ctx, args) => {
@@ -123,7 +126,10 @@ Respond with ONLY valid JSON matching this exact structure:
   "assetClasses": "2-3 sentences about which asset classes they used, missed, and what each offers",
   "topTip": "one specific, actionable tip for their next game (1 sentence)",
   "archetype": "one of: Cautious Guardian | Balanced Harvester | Tech Enthusiast | Crypto Daredevil | Diversified Master | Momentum Chaser | Methodical Farmer | Bond Fortress Builder",
-  "overallScore": <integer 0-100 rating their overall strategy quality>
+  "overallScore": <integer 0-100 rating their overall strategy quality>,
+  "riskScore": <integer 0-100 rating their risk management — higher means they balanced risk well, avoided reckless concentration, and sized positions appropriately>,
+  "diversificationScore": <integer 0-100 rating how well they diversified — higher means they spread across multiple uncorrelated asset classes>,
+  "longTermScore": <integer 0-100 rating their long-term thinking — higher means they consistently chose longer time horizons and thought beyond short-term gains>
 }`
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -167,6 +173,9 @@ Respond with ONLY valid JSON matching this exact structure:
       topTip: string
       archetype: string
       overallScore: number
+      riskScore: number
+      diversificationScore: number
+      longTermScore: number
     }
 
     try {
@@ -175,16 +184,22 @@ Respond with ONLY valid JSON matching this exact structure:
       throw new Error(`Failed to parse AI response as JSON. Raw: ${content.slice(0, 200)}`)
     }
 
+    const clamp = (n: number | undefined, fallback: number) =>
+      Math.min(100, Math.max(0, Math.round(n ?? fallback)))
+
     const recap = {
-      summary:            parsed.summary            ?? '',
-      riskProfiling:      parsed.riskProfiling      ?? '',
-      diversification:    parsed.diversification    ?? '',
-      longTermInvesting:  parsed.longTermInvesting  ?? '',
-      assetClasses:       parsed.assetClasses       ?? '',
-      topTip:             parsed.topTip             ?? '',
-      archetype:          parsed.archetype          ?? 'Methodical Farmer',
-      overallScore:       Math.min(100, Math.max(0, Math.round(parsed.overallScore ?? 50))),
-      generatedAt:        Date.now(),
+      summary:              parsed.summary            ?? '',
+      riskProfiling:        parsed.riskProfiling      ?? '',
+      diversification:      parsed.diversification    ?? '',
+      longTermInvesting:    parsed.longTermInvesting  ?? '',
+      assetClasses:         parsed.assetClasses       ?? '',
+      topTip:               parsed.topTip             ?? '',
+      archetype:            parsed.archetype          ?? 'Methodical Farmer',
+      overallScore:         clamp(parsed.overallScore, 50),
+      riskScore:            clamp(parsed.riskScore, 50),
+      diversificationScore: clamp(parsed.diversificationScore, 50),
+      longTermScore:        clamp(parsed.longTermScore, 50),
+      generatedAt:          Date.now(),
     }
 
     // Persist to DB

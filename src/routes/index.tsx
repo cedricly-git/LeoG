@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState, useEffect, useCallback } from 'react'
-import { useMutation } from 'convex/react'
+import { useMutation, useAction } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
 import { PixelAnimal } from '../components/PixelAnimal'
@@ -533,6 +533,16 @@ export default function LandingV2() {
   const saveRoundMutation       = useMutation(api.rounds.saveRound)
   const completeGameMutation    = useMutation(api.games.completeGame)
   const updateUserStatsMutation = useMutation(api.users.updateUserStats)
+  const analyzeGameAction       = useAction(api.ai.analyzeGame)
+
+  // AI recap state (game-over screen)
+  const [aiRecap, setAiRecap]     = useState<null | {
+    summary: string; riskProfiling: string; diversification: string
+    longTermInvesting: string; assetClasses: string; topTip: string
+    archetype: string; overallScore: number
+    riskScore: number; diversificationScore: number; longTermScore: number
+  }>(null)
+  const [aiLoading, setAiLoading] = useState(false)
   // CSV data
   const [csvData, setCsvData] = useState<CsvDataMap | null>(null)
   const [multiplierMap, setMultiplierMap] = useState<MultiplierMap>(new Map())
@@ -799,6 +809,29 @@ export default function LandingV2() {
           finalPortfolioValue: finalValue,
           roundsPlayed: newHistory.length,
         }).catch(err => console.error('Failed to update user stats:', err))
+
+        // Trigger AI analysis
+        setAiRecap(null)
+        setAiLoading(true)
+        analyzeGameAction({
+          gameId: currentGameId,
+          rounds: newHistory.map(h => ({
+            roundNumber: h.round,
+            timeSkipDays: h.timeSkipDays,
+            eventTitles: h.eventIds.map(id => getEventById(id).title),
+            eventPositive: h.eventIds.map(id => getEventById(id).isPositive),
+            categories: h.assetResults.map(r => r.animalCategory as string),
+            units: h.assetResults.map(r => r.units),
+            pnlPerCategory: h.assetResults.map(r => r.dollarPnl),
+            portfolioValueBefore: h.portfolioValueBefore,
+            portfolioValueAfter: h.portfolioValueAfter,
+            totalPnl: h.totalPnl,
+          })),
+          finalPortfolioValue: finalValue,
+          startValue: 1000,
+        }).then(recap => setAiRecap(recap))
+          .catch(err => console.error('AI analysis failed:', err))
+          .finally(() => setAiLoading(false))
       }
       setGamePhase('game-over')
     } else {
@@ -817,6 +850,8 @@ export default function LandingV2() {
     setCurrentResult(null)
     setPortfolioValue(1000)
     setActiveTab('Stock')
+    setAiRecap(null)
+    setAiLoading(false)
 
     // Create a new game for the same player (skips profile screen)
     if (currentUserId) {
@@ -1677,6 +1712,120 @@ export default function LandingV2() {
               </div>
             )
           })()}
+
+          {/* AI Strategy Feedback */}
+          <div className="slide-up" style={{ animationDelay: '0.55s', width: '100%', maxWidth: '640px' }}>
+            {aiLoading && (
+              <div style={{
+                borderRadius: '12px', border: '1px solid rgba(168,213,184,0.2)',
+                background: 'rgba(168,213,184,0.04)',
+                padding: '28px 24px', textAlign: 'center',
+              }}>
+                <div style={{ fontFamily: '"Lora", serif', fontSize: '11px', color: '#A8D5B870', letterSpacing: '3px', textTransform: 'uppercase', marginBottom: '8px' }}>
+                  AI Strategy Analysis
+                </div>
+                <div style={{ fontFamily: '"Lora", serif', fontSize: '13px', color: '#A8D5B8A0', fontStyle: 'italic' }}>
+                  Reviewing your harvest season…
+                </div>
+                <div style={{
+                  margin: '16px auto 0', width: '48px', height: '3px', borderRadius: '2px',
+                  background: 'linear-gradient(90deg, #2D6A4F, #F5C842, #2D6A4F)',
+                  backgroundSize: '200% 100%', animation: 'bob 1.8s ease-in-out infinite',
+                }} />
+              </div>
+            )}
+
+            {!aiLoading && aiRecap && (() => {
+              const ratings = [
+                { label: 'Risk Management',    score: aiRecap.riskScore,            emoji: '🛡️' },
+                { label: 'Diversification',    score: aiRecap.diversificationScore, emoji: '🌾' },
+                { label: 'Long-term Thinking', score: aiRecap.longTermScore,        emoji: '🕰️' },
+              ]
+              const scoreColor = (s: number) => s >= 70 ? '#4ADE80' : s >= 40 ? '#F5C842' : '#F87171'
+              const archetypeColor = aiRecap.overallScore >= 70 ? '#4ADE80' : aiRecap.overallScore >= 40 ? '#F5C842' : '#F87171'
+              return (
+                <div style={{
+                  borderRadius: '12px', border: '1px solid rgba(168,213,184,0.2)',
+                  background: 'rgba(10,20,15,0.6)', overflow: 'hidden',
+                }}>
+                  {/* Header */}
+                  <div style={{
+                    padding: '18px 22px 14px',
+                    borderBottom: '1px solid rgba(168,213,184,0.12)',
+                    display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px',
+                  }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontFamily: '"Lora", serif', fontSize: '9px', color: '#A8D5B870', letterSpacing: '3px', textTransform: 'uppercase', marginBottom: '6px' }}>
+                        AI Strategy Analysis
+                      </div>
+                      <div style={{
+                        fontFamily: '"Playfair Display", serif', fontSize: '18px',
+                        fontWeight: 900, color: archetypeColor, marginBottom: '6px',
+                      }}>{aiRecap.archetype}</div>
+                      <div style={{ fontFamily: '"Lora", serif', fontSize: '12px', color: '#C8B898', lineHeight: 1.6 }}>
+                        {aiRecap.summary}
+                      </div>
+                    </div>
+                    <div style={{
+                      flexShrink: 0, textAlign: 'center', padding: '10px 14px', borderRadius: '8px',
+                      background: 'rgba(168,213,184,0.06)', border: '1px solid rgba(168,213,184,0.15)',
+                    }}>
+                      <div style={{
+                        fontFamily: '"Playfair Display", serif', fontSize: '28px',
+                        fontWeight: 900, color: archetypeColor, lineHeight: 1,
+                      }}>{aiRecap.overallScore}</div>
+                      <div style={{ fontFamily: '"Lora", serif', fontSize: '9px', color: '#A8D5B870', letterSpacing: '1.5px', textTransform: 'uppercase', marginTop: '3px' }}>
+                        /100
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Rating bars */}
+                  <div style={{ padding: '16px 22px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {ratings.map(r => (
+                      <div key={r.label}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '5px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                            <span style={{ fontSize: '14px' }}>{r.emoji}</span>
+                            <span style={{ fontFamily: '"Lora", serif', fontSize: '11px', color: '#C8B898', letterSpacing: '0.5px' }}>{r.label}</span>
+                          </div>
+                          <span style={{
+                            fontFamily: '"Playfair Display", serif', fontSize: '14px',
+                            fontWeight: 700, color: scoreColor(r.score),
+                          }}>{r.score}<span style={{ fontSize: '10px', color: '#A8D5B860', fontFamily: '"Lora", serif', fontWeight: 400 }}>/100</span></span>
+                        </div>
+                        <div style={{ height: '6px', borderRadius: '3px', background: 'rgba(168,213,184,0.1)', overflow: 'hidden' }}>
+                          <div style={{
+                            height: '100%', borderRadius: '3px',
+                            width: `${r.score}%`,
+                            background: `linear-gradient(90deg, ${scoreColor(r.score)}80, ${scoreColor(r.score)})`,
+                            transition: 'width 1s ease-out',
+                          }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Tip */}
+                  <div style={{
+                    padding: '12px 22px 16px',
+                    borderTop: '1px solid rgba(168,213,184,0.1)',
+                    display: 'flex', gap: '10px', alignItems: 'flex-start',
+                  }}>
+                    <span style={{ fontSize: '14px', flexShrink: 0, marginTop: '1px' }}>💡</span>
+                    <div>
+                      <div style={{ fontFamily: '"Lora", serif', fontSize: '9px', color: '#A8D5B870', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '3px' }}>
+                        Next Season Tip
+                      </div>
+                      <div style={{ fontFamily: '"Lora", serif', fontSize: '12px', color: '#C8B898', lineHeight: 1.6, fontStyle: 'italic' }}>
+                        {aiRecap.topTip}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
+          </div>
 
           <div className="slide-up" style={{ animationDelay: '0.6s', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
             {currentUserId && (
