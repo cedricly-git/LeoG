@@ -2134,7 +2134,7 @@ export default function LandingV2() {
                 </span>
               </div>
 
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px' }}>
+              <div className="sel-farm-anim" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px' }}>
                 <AnimatedFarm
                   selected={selected}
                   animalNames={Object.fromEntries(LIVESTOCK.map(l => [l.id, l.animalName]))}
@@ -2500,7 +2500,7 @@ export default function LandingV2() {
               </div>
 
               {/* Farm animation */}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 32px' }}>
+              <div className="rr-farm-anim" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 32px' }}>
                 <AnimatedFarm
                   selected={selected}
                   animalNames={Object.fromEntries(LIVESTOCK.map(l => [l.id, l.animalName]))}
@@ -2914,7 +2914,7 @@ export default function LandingV2() {
                 </div>
 
                 {/* Farm animation */}
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 32px' }}>
+                <div className="rewind-farm-anim" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 32px' }}>
                   <AnimatedFarm
                     selected={rewindSelected}
                     animalNames={Object.fromEntries(LIVESTOCK.map(l => [l.id, l.animalName]))}
