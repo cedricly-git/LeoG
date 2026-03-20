@@ -4,7 +4,7 @@ import { useMutation } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
 import { PixelAnimal, PIXEL_SPRITES } from '../components/PixelAnimal'
-import { AnimatedFarm } from '../components/AnimatedFarm'
+import { AnimatedFarm, type FarmEffect } from '../components/AnimatedFarm'
 import { UserProfileScreen } from '../components/UserProfileScreen'
 import { ProfilePanel } from '../components/ProfilePanel'
 import { ASSET_ANIMAL_MAP, type AnimalCategory } from '../data/assetAnimalMapping'
@@ -62,10 +62,12 @@ import AxeImg from '../../Images/Tools/Axe.jpg'
 import ChainsawImg from '../../Images/Tools/Chainsaw.jpg'
 import RiceImg from '../../Images/Cereals/Rice.jpg'
 // 
-import PixelPig from '../../Images/PixelArts/Pixelpig.jpeg'
-import PixelDog from '../../Images/PixelArts/Pixeldog.jpeg'
-import PixelHorse from '../../Images/PixelArts/Pixelhorse.jpeg'
-import PixelCow from '../../Images/PixelArts/Pixelcow.jpeg'
+import PixelPig from '../../Images/pixelpig.png'
+import PixelDog from '../../Images/Pixeldog_1.jpg'
+import PixelHorse from '../../Images/pixelhorse.png'
+import PixelCow from '../../Images/Pixelcow1.png'
+import PixelTool from '../../Images/pixeltool.png'
+import PixelHouse from '../../Images/pixelhouse.png'
 
 export const Route = createFileRoute('/')({
   component: LandingV2,
@@ -126,9 +128,50 @@ const PIXEL_IMAGE_MAP: Record<string, string> = {
   'Guard Dog': PixelDog,
   'Horse': PixelHorse,
   'Bovine': PixelCow,
+  'Tool': PixelTool,
+  'Collective': PixelHouse,
 }
 
-// 
+// â”€â”€ Event â†’ visual farm effect mapping â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function getEffectsForEvents(events: { id: number; isPositive: boolean }[]): FarmEffect[] {
+  const out: FarmEffect[] = []
+  for (const ev of events) {
+    switch (ev.id) {
+      case 1:  out.push({ type: 'locusts' }); break                           // locust swarm
+      case 2:  out.push({ type: 'sparkles', zone: 'livestock' }); break       // high harvest
+      case 3:  out.push({ type: 'disease',  zone: 'livestock' }); break       // swine flu
+      case 4:  out.push({ type: 'sparkles', zone: 'build' }); break           // timber rush
+      case 5:  out.push({ type: 'storm' }); break                             // wolf attack
+      case 6:  out.push({ type: 'sparkles', zone: 'livestock' }); break       // guard dogs boom
+      case 7:  out.push({ type: 'extra_clouds' }); break                      // concrete shelter storm
+      case 8:  out.push({ type: 'sparkles', zone: 'farming' }); break         // greenhouse herbs
+      case 9:  out.push({ type: 'sparkles', zone: 'livestock' }); break       // iron hoof upgrade
+      case 10: out.push({ type: 'rain', intensity: 0.5 }); break              // silo leak
+      case 11: out.push({ type: 'drought' }); break                           // scorched drought
+      case 12: out.push({ type: 'sparkles', zone: 'livestock' }); break       // spring farrowing
+      case 13: out.push({ type: 'golden_sky' }); break                        // cattle rally
+      case 14: out.push({ type: 'disease',  zone: 'livestock' }); break       // cattle blight
+      case 15: out.push({ type: 'sparkles', zone: 'build' }); break           // precious metal rush
+      case 16: out.push({ type: 'extra_clouds' }); break                      // tarnished vault
+      case 17: out.push({ type: 'sparkles', zone: 'livestock' }); break       // pig jamboree
+      case 18: out.push({ type: 'disease',  zone: 'livestock' }); break       // sick sow season
+      case 19: out.push({ type: 'sparkles', zone: 'livestock' }); break       // watchtower contracts
+      case 20: out.push({ type: 'sparkles', zone: 'livestock' }); break       // racing circuit
+      case 21: out.push({ type: 'sparkles', zone: 'farming' }); break         // valley plague herbs
+      case 22: out.push({ type: 'golden_sky' }); break                        // eastern harvest boom
+      case 23: out.push({ type: 'rain', intensity: 0.6 }); break              // lame season wet spring
+      case 24: out.push({ type: 'disease',  zone: 'livestock' }); break       // valley distemper
+      case 25: out.push({ type: 'disease',  zone: 'farming' }); break         // root blight
+      case 26: out.push({ type: 'extra_clouds' }); break                      // workshop collapse
+      case 27: out.push({ type: 'storm' }); break                             // valley enclosure
+      case 28: out.push({ type: 'extra_clouds' }); break                      // reserve audit
+      case 29: out.push({ type: 'golden_sky' }); break                        // golden harvest
+    }
+  }
+  return out
+}
+
+//
 const CATEGORY_META: Record<AnimalCategory, {
   emoji: string; badge: string; badgeColor: string; sectorLabel: string
 }> = {
@@ -603,7 +646,8 @@ export default function LandingV2() {
       setCurrentResult({ ...result, portfolioValueAfter: clampedPortfolioValueAfter, totalPnl: clampedTotalPnl })
     }
 
-    setGamePhase('round-results')
+    setGamePhase('locking')
+    setTimeout(() => setGamePhase('round-results'), 1800)
   }
 
   // Sequence the round-active animation steps: time-skip ? event-1
@@ -804,6 +848,7 @@ export default function LandingV2() {
   const currentEvents   = currentEventIds.map(id => getEventById(id))
   const currentEvent    = currentEvents[0] ?? null
   const lastResult = roundHistory[roundHistory.length - 1] ?? null
+  const activeEffects   = getEffectsForEvents(currentEvents)
 
   return (
     <div style={{ minHeight: '100vh', background: '#FAF4E8', color: '#2C1810', fontFamily: '"Georgia", serif' }}>
@@ -1431,7 +1476,7 @@ export default function LandingV2() {
                       <button
                         key={h.round}
                         onClick={() => setRewindRound(h.round)}
-                        title={`Round ${h.round} · ${formatPnl(h.totalPnl)}`}
+                        title={`Round ${h.round} Â· ${formatPnl(h.totalPnl)}`}
                         style={{
                           width: '40px', height: '40px', borderRadius: '50%',
                           background: isSelected ? (isPos ? '#4ADE80' : '#F87171') : bgColor,
@@ -1721,7 +1766,7 @@ export default function LandingV2() {
                 { label: 'Budget', value: `$${budget}` },
                 { label: 'Spent', value: `$${spent}` },
                 { label: 'Remaining', value: `$${budget - spent}` },
-                { label: 'Animals', value: totalUnits },
+                { label: 'Assets', value: totalUnits },
               ].map(s => (
                 <div key={s.label} style={{ textAlign: 'center' }}>
                   <div style={{ fontSize: '9px', color: '#A8D5B8', letterSpacing: '1.5px', fontFamily: '"Lora", serif', textTransform: 'uppercase' }}>{s.label}</div>
@@ -1947,6 +1992,7 @@ export default function LandingV2() {
                   animalCats={Object.fromEntries(LIVESTOCK.map(l => [l.id, l.animalCategory]))}
                   imageMap={IMAGE_MAP}
                   pixelImageMap={PIXEL_IMAGE_MAP}
+                  effects={activeEffects}
                 />
                 <div style={{ marginTop: '12px', fontFamily: '"Lora", serif', fontSize: '11px', color: '#8B6B50', fontStyle: 'italic', textAlign: 'center' }}>
                   Pixel animation will populate based on your portfolio
@@ -2315,6 +2361,7 @@ export default function LandingV2() {
                   animalCats={Object.fromEntries(LIVESTOCK.map(l => [l.id, l.animalCategory]))}
                   imageMap={IMAGE_MAP}
                   pixelImageMap={PIXEL_IMAGE_MAP}
+                  effects={activeEffects}
                 />
               </div>
 
@@ -2443,7 +2490,7 @@ export default function LandingV2() {
               ))}
             </div>
 
-            {/* Mini timeline strip �?? beige, no stray white lines */}
+            {/* Mini timeline strip ï¿½?? beige, no stray white lines */}
             <div style={{
               background: '#F2E8D8', borderBottom: '1px solid #E0CEB4',
               padding: '10px 24px', display: 'flex', alignItems: 'center', flexShrink: 0, gap: '12px',
@@ -2457,7 +2504,7 @@ export default function LandingV2() {
                     <button
                       key={h.round}
                       onClick={() => setRewindRound(h.round)}
-                      title={`Round ${h.round} · ${formatPnl(h.totalPnl)}`}
+                      title={`Round ${h.round} Â· ${formatPnl(h.totalPnl)}`}
                       style={{
                         flex: 1, height: '28px', borderRadius: '14px',
                         background: isActive
@@ -2728,6 +2775,7 @@ export default function LandingV2() {
                     animalCats={Object.fromEntries(LIVESTOCK.map(l => [l.id, l.animalCategory]))}
                     imageMap={IMAGE_MAP}
                     pixelImageMap={PIXEL_IMAGE_MAP}
+                    effects={getEffectsForEvents(rewindEvents)}
                   />
                 </div>
 
