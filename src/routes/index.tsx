@@ -1057,7 +1057,7 @@ export default function LandingV2() {
 
           {/* Time-skip reveal */}
           <div className="slide-up" style={{ animationDelay: '0.2s', textAlign: 'center', marginBottom: '48px' }}>
-            <div style={{
+            <div className="round-active-timeskip" style={{
               display: 'inline-flex', alignItems: 'center', gap: '16px',
               background: 'rgba(245,200,66,0.06)', border: '1px solid rgba(245,200,66,0.2)',
               borderRadius: '8px', padding: '24px 40px',
@@ -1113,7 +1113,7 @@ export default function LandingV2() {
                 </div>
 
                 {/* Main card */}
-                <div style={{
+                <div className="round-active-eventcard" style={{
                   background: `${ev.color}12`,
                   border: `1.5px solid ${ev.color}50`,
                   borderRadius: '10px', padding: '28px 32px',
@@ -1197,7 +1197,7 @@ export default function LandingV2() {
         <div style={{ minHeight: '100vh', background: '#FAF4E8', display: 'flex', flexDirection: 'column' }}>
 
           {/* Header bar */}
-          <div style={{
+          <div className="recap-header" style={{
             background: '#2C1810', padding: '0 40px',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             height: '64px', flexShrink: 0,
@@ -1233,7 +1233,7 @@ export default function LandingV2() {
           </div>
 
           {/* Body: two columns */}
-          <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 360px', overflow: 'hidden' }}>
+          <div className="recap-grid" style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 360px', overflow: 'hidden' }}>
 
             {/* LEFT: per-asset P&L */}
             <div style={{ overflowY: 'auto', padding: '32px 40px 48px', borderRight: '1px solid #E8D9C8' }}>
@@ -1428,7 +1428,7 @@ export default function LandingV2() {
 
       {/*  */}
       {gamePhase === 'game-over' && (
-        <div style={{
+        <div className="game-over-wrap" style={{
           minHeight: '100vh', background: '#1C1008',
           display: 'flex', flexDirection: 'column', alignItems: 'center',
           padding: '60px 40px', gap: '32px',
@@ -1881,7 +1881,7 @@ export default function LandingV2() {
           )}
 
           {/* Header */}
-          <div style={{
+          <div className="sel-header" style={{
             background: '#2D6A4F', padding: '0 40px',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             height: '64px', flexShrink: 0, position: 'relative', overflow: 'hidden',
@@ -1910,7 +1910,7 @@ export default function LandingV2() {
                 </>
               )}
             </div>
-            <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
+            <div className="sel-header-right" style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
               {[
                 { label: 'Budget', value: `$${budget}` },
                 { label: 'Spent', value: `$${spent}` },
@@ -1966,10 +1966,10 @@ export default function LandingV2() {
           )}
 
           {/* Two-column body */}
-          <div style={{ display: 'grid', gridTemplateColumns: '40% 60%', height: `calc(100vh - ${currentRound > 1 && lastResult ? '100px' : '64px'})` }}>
+          <div className="sel-grid" style={{ display: 'grid', gridTemplateColumns: '40% 60%', height: `calc(100vh - ${currentRound > 1 && lastResult ? '100px' : '64px'})` }}>
 
             {/* LEFT: livestock selection ? collapses during locking */}
-            <div style={{ borderRight: '1px solid #E8D9C8', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+            <div className="sel-left-col" style={{ borderRight: '1px solid #E8D9C8', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
 
               {/* Sticky header + tabs ? hidden when locking */}
               <div
@@ -2048,7 +2048,7 @@ export default function LandingV2() {
 
               {/* Scrollable card list ? hidden when locking */}
               <div
-                className={isLocking ? 'lock-fade-up' : ''}
+                className={`sel-card-list${isLocking ? ' lock-fade-up' : ''}`}
                 style={{
                   flex: 1, overflowY: 'auto', padding: '20px 24px 32px',
                   animationDelay: isLocking ? '0.05s' : undefined,
@@ -2120,7 +2120,7 @@ export default function LandingV2() {
             </div>
 
             {/* RIGHT: farm preview */}
-            <div style={{ background: '#F0E8D4', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
+            <div className="sel-right-col" style={{ background: '#F0E8D4', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
 
               <div style={{ padding: '28px 32px', borderBottom: '1px solid #E8D9C8', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                 <div>
@@ -2211,7 +2211,7 @@ export default function LandingV2() {
           </div>
 
           {/* Two-column body */}
-          <div style={{ display: 'grid', gridTemplateColumns: '40% 60%', height: 'calc(100vh - 64px)' }}>
+          <div className="rr-grid" style={{ display: 'grid', gridTemplateColumns: '40% 60%', height: 'calc(100vh - 64px)' }}>
 
             {/* LEFT: per-asset diff */}
             <div style={{ borderRight: '1px solid #E8D9C8', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
@@ -2482,7 +2482,7 @@ export default function LandingV2() {
             </div>
 
             {/* RIGHT: farm preview + news banderole + End Round */}
-            <div style={{ background: '#F0E8D4', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
+            <div className="rr-right-col" style={{ background: '#F0E8D4', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
 
               <div style={{ padding: '28px 32px', borderBottom: '1px solid #E8D9C8', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                 <div>
@@ -2600,14 +2600,14 @@ export default function LandingV2() {
         const fmt = (d: Date) => (d instanceof Date ? d : new Date(d)).toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' })
 
         return (
-          <div style={{
+          <div className="rewind-container" style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
             background: '#FAF4E8', zIndex: 600,
             display: 'flex', flexDirection: 'column',
             animation: 'fadeIn 0.18s ease',
           }}>
             {/* Top bar ? beige, matches the rest of the screen */}
-            <div style={{
+            <div className="rewind-header" style={{
               height: '64px', background: '#FAF4E8', flexShrink: 0,
               display: 'flex', alignItems: 'center', padding: '0 24px', gap: '12px',
               borderBottom: '1px solid #E8D9C8',
@@ -2678,7 +2678,7 @@ export default function LandingV2() {
             </div>
 
             {/* Two-column body */}
-            <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '40% 60%', overflow: 'hidden' }}>
+            <div className="rewind-grid" style={{ flex: 1, display: 'grid', gridTemplateColumns: '40% 60%', overflow: 'hidden' }}>
 
               {/* LEFT: per-asset P&L */}
               <div style={{ borderRight: '1px solid #E8D9C8', overflowY: 'auto', padding: '28px 28px 48px', position: 'relative' }}>
@@ -2896,7 +2896,7 @@ export default function LandingV2() {
               </div>
 
               {/* RIGHT: farm view */}
-              <div style={{ background: '#F0E8D4', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
+              <div className="rewind-right-col" style={{ background: '#F0E8D4', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
   
                 <div style={{ padding: '24px 28px 16px', borderBottom: '1px solid #E8D9C8', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <div>

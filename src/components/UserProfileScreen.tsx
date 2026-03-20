@@ -146,7 +146,7 @@ export function UserProfileScreen({ onBegin }: UserProfileScreenProps) {
       `}</style>
 
       {/* Green top band */}
-      <div style={{
+      <div className="profile-header" style={{
         background: 'linear-gradient(135deg, #2D6A4F 0%, #1a4a35 100%)',
         padding: '0 40px',
         height: '64px',

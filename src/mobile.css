@@ -1,0 +1,172 @@
+/* ===========================================
+   MOBILE RESPONSIVE OVERRIDES — max-width: 768px
+   Does NOT affect desktop view.
+   =========================================== */
+
+@media (max-width: 768px) {
+
+  /* ── Profile screen header ─────────────── */
+  .profile-header {
+    padding: 0 16px !important;
+    height: auto !important;
+    min-height: 52px !important;
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+    overflow: visible !important;
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+  }
+  .profile-header > div:first-child {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 1px !important;
+  }
+
+  /* ── Selection screen header ────────────── */
+  .sel-header {
+    padding: 0 16px !important;
+    height: auto !important;
+    min-height: 52px !important;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+    overflow: visible !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+  .sel-header > div:first-child {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 1px !important;
+  }
+  .sel-header-right {
+    gap: 10px !important;
+    flex-wrap: wrap !important;
+    justify-content: flex-start !important;
+  }
+
+  /* ── Selection screen two-column grid ───── */
+  .sel-grid {
+    grid-template-columns: 1fr !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+  .sel-left-col {
+    height: auto !important;
+    overflow: visible !important;
+    min-height: 0 !important;
+    border-right: none !important;
+    border-bottom: 1px solid #E8D9C8 !important;
+  }
+  .sel-card-list {
+    overflow-y: visible !important;
+    flex: none !important;
+    max-height: none !important;
+  }
+  .sel-right-col {
+    height: 260px !important;
+    min-height: 260px !important;
+    max-height: 260px !important;
+    overflow: hidden !important;
+  }
+
+  /* ── Round recap header ─────────────────── */
+  .recap-header {
+    padding: 0 16px !important;
+    height: auto !important;
+    min-height: 52px !important;
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+  .recap-header > div:last-child {
+    flex-wrap: wrap !important;
+    gap: 12px !important;
+  }
+
+  /* ── Round recap two-column grid ─────────── */
+  .recap-grid {
+    grid-template-columns: 1fr !important;
+    flex: none !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .recap-grid > div {
+    height: auto !important;
+    overflow-y: visible !important;
+    min-height: 0 !important;
+  }
+
+  /* ── Round results two-column grid ──────── */
+  .rr-grid {
+    grid-template-columns: 1fr !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+  .rr-grid > div:first-child {
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .rr-grid > div:first-child > div {
+    overflow-y: visible !important;
+    height: auto !important;
+  }
+  .rr-right-col {
+    height: 280px !important;
+    min-height: 280px !important;
+    max-height: 280px !important;
+    overflow: hidden !important;
+  }
+
+  /* ── Rewind overlay ─────────────────────── */
+  .rewind-container {
+    overflow-y: auto !important;
+  }
+  .rewind-header {
+    padding: 0 16px !important;
+    height: auto !important;
+    min-height: 52px !important;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+    overflow: visible !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+  .rewind-header > div:first-child {
+    flex-direction: column !important;
+    gap: 0 !important;
+  }
+  .rewind-grid {
+    grid-template-columns: 1fr !important;
+    flex: none !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .rewind-grid > div:first-child {
+    overflow-y: visible !important;
+    height: auto !important;
+    border-right: none !important;
+    border-bottom: 1px solid #E8D9C8 !important;
+  }
+  .rewind-right-col {
+    height: 280px !important;
+    min-height: 280px !important;
+    max-height: 280px !important;
+    overflow: hidden !important;
+  }
+
+  /* ── Game over screen ───────────────────── */
+  .game-over-wrap {
+    padding: 40px 20px !important;
+    gap: 24px !important;
+  }
+
+  /* ── Round active event screen ──────────── */
+  .round-active-timeskip {
+    padding: 16px 24px !important;
+    gap: 12px !important;
+  }
+  .round-active-eventcard {
+    padding: 20px 20px !important;
+  }
+}
