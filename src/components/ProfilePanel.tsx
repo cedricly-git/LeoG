@@ -281,6 +281,9 @@ type AiRecap = {
   topTip: string
   archetype: string
   overallScore: number
+  riskScore?: number
+  diversificationScore?: number
+  longTermScore?: number
   generatedAt: number
 }
 
@@ -336,6 +339,34 @@ function AiRecapPanel({ recap }: { recap: AiRecap }) {
             <div style={{ fontFamily: '"Lora", serif', fontSize: '9px', color: scoreColor, letterSpacing: '1px', textTransform: 'uppercase' }}>score</div>
           </div>
         </div>
+
+        {/* Rating bars */}
+        {(recap.riskScore !== undefined || recap.diversificationScore !== undefined || recap.longTermScore !== undefined) && (() => {
+          const ratings = [
+            { label: 'Risk Management',    score: recap.riskScore            ?? 50, emoji: '🛡️' },
+            { label: 'Diversification',    score: recap.diversificationScore ?? 50, emoji: '🌾' },
+            { label: 'Long-term Thinking', score: recap.longTermScore        ?? 50, emoji: '🕰️' },
+          ]
+          const sc = (s: number) => s >= 70 ? '#16a34a' : s >= 40 ? '#ca8a04' : '#dc2626'
+          return (
+            <div style={{ padding: '10px 14px', borderBottom: '1px solid #EDE3D3', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {ratings.map(r => (
+                <div key={r.label}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '3px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <span style={{ fontSize: '11px' }}>{r.emoji}</span>
+                      <span style={{ fontFamily: '"Lora", serif', fontSize: '10px', color: '#6B5040' }}>{r.label}</span>
+                    </div>
+                    <span style={{ fontFamily: '"Playfair Display", serif', fontSize: '12px', fontWeight: 700, color: sc(r.score) }}>{r.score}<span style={{ fontSize: '9px', color: '#B89070', fontFamily: '"Lora", serif', fontWeight: 400 }}>/100</span></span>
+                  </div>
+                  <div style={{ height: '5px', borderRadius: '3px', background: '#F0E8D4', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', borderRadius: '3px', width: `${r.score}%`, background: `linear-gradient(90deg, ${sc(r.score)}60, ${sc(r.score)})` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+        })()}
 
         {/* Tabs */}
         <div style={{ display: 'flex', borderBottom: '1px solid #EDE3D3' }}>
