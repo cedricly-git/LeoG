@@ -95,19 +95,19 @@ LeoG_Front/
 ### Install dependencies
 
 ```bash
-npm install
+bun install
 ```
 
 ### Start the development server
 
 ```bash
-npm run dev
+bun run dev
 ```
 
 This starts the Vite dev server with HMR. You'll also need the Convex backend running:
 
 ```bash
-npx convex dev
+bunx convex dev
 ```
 
 See `CONVEX_SETUP.md` for backend configuration details.
@@ -115,14 +115,14 @@ See `CONVEX_SETUP.md` for backend configuration details.
 ### Build for production
 
 ```bash
-npm run build
-npm run preview
+bun run build
+bun run preview
 ```
 
 ### Lint
 
 ```bash
-npm run lint
+bun run lint
 ```
 
 ---
