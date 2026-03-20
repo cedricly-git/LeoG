@@ -141,7 +141,7 @@ Respond with ONLY valid JSON matching this exact structure:
         'X-Title': 'LeoG Farm Investment Game',
       },
       body: JSON.stringify({
-        model: 'minimax/minimax-m2.7',
+        model: 'inception/mercury-2',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.7,
         max_tokens: 1400,
