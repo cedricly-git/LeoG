@@ -138,7 +138,7 @@ Respond with ONLY valid JSON matching this exact structure:
         model: 'minimax/minimax-m2.7',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.7,
-        max_tokens: 900,
+        max_tokens: 1400,
       }),
     })
 
