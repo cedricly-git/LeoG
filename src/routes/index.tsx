@@ -2053,9 +2053,6 @@ export default function LandingV2() {
             height: '64px', background: '#2D6A4F', display: 'flex', alignItems: 'center',
             padding: '0 32px', gap: '16px', position: 'sticky', top: 0, zIndex: 10,
           }}>
-            <div style={{ fontFamily: '"Playfair Display", serif', fontSize: '18px', fontWeight: 700, color: '#FAF4E8', letterSpacing: '0.5px' }}>
-              LeoG
-            </div>
             <div style={{ flex: 1 }} />
             {userName && (
               <div style={{ fontFamily: '"Lora", serif', fontSize: '13px', color: '#A8D5B8' }}>
