@@ -10,6 +10,9 @@ const aiRecapValidator = v.object({
   topTip: v.string(),
   archetype: v.string(),
   overallScore: v.number(),
+  riskScore: v.optional(v.number()),
+  diversificationScore: v.optional(v.number()),
+  longTermScore: v.optional(v.number()),
   generatedAt: v.number(),
 })
 
